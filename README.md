@@ -1,30 +1,36 @@
-# Livo Heartbeat Prototype
+# Livo Heartbeat: Reducing Decision Latency (Option A)
 
-This repository contains the prototype and the accompanying system design document for the **Livo Heartbeat** feature (Option A).
+This repository contains the prototype and the accompanying system design document for the **Livo Heartbeat** feature.
 
-## Part 1: Design Document
+> *"The goal is not to inform, but to reduce decision latency."*
 
-**1. Digest Contents**
-The digest strips away operational noise, presenting only actionable BD updates, delivery blockers, and client sentiment shifts. Every 30 minutes, she needs to know: "Is a client waiting on me? Are any of our shipping deadlines at risk today? Did a key deal progress?"
+## Part 1: Design Document (Decision Latency Driven)
 
-**2. Urgency vs. Informational**
-We use an LLM (e.g., Claude 3.5 Sonnet) with a strict rubric. "Urgent" means direct client questions, escalations, or explicit blockers reported by engineering. These trigger a prominent notification. "Informational" (general updates, closed tickets, routine scheduling) is silently batched into an end-of-day digest.
+**1. What’s in the digest?**  
+We organize strictly by *client unit* rather than tool. Instead of repeating context, we only show *what changed* (+2 angry emails, pipeline resolved). We aggressively surface "silent failures" (e.g., no engineering activity on a priority client for 12 hours) alongside contextual, time-sensitive reminders ("Client call in 1 hr; no prep doc ready"). 
 
-**3. Tools & MCP Servers**
-We use the **Slack MCP** (internal delivery chatter), **Google Drive/Gmail MCP** (client comms), and **Linear/GitHub MCP** (blockers). MCPs standardise context retrieval. This avoids writing fragile, custom REST API wrappers for each distinct tool, keeping integration code minimal and generic.
+**2. Urgency vs. Informational**  
+Every project receives a dynamic risk score (🟢 Healthy, 🟡 Watch, 🔴 At Risk). "Urgent" means a project shifted exactly to "At Risk" (e.g., *🔴 2 failed pipeline runs + pending client reply*). We use LLMs for compression and sentiment tracking, catching sudden negative tone shifts.
 
-**4. Hardest Calls**
-The hardest call was aggressively filtering out 95% of updates, valuing brevity over completeness. Assuming she wants zero configuration, the system drops low-confidence alerts rather than risking spamming her. Since it runs locally on her MacBook for client data privacy, we gave up central cloud telemetry.
+**3. Tools & Justification**  
+*   **Slack/Email (MCP):** Real-time client signal (source of truth).
+*   **DB (Postgres):** Structured project state.
+*   **Logs/Monitoring:** System reliability and silent-failure detection.  
+*Key distinction:* The LLM is used exclusively for compression and judgment, not raw data retrieval.
+
+**4. Hardest Calls (Trade-offs)**  
+Ignored 95% of low-priority logs entirely to reduce cognitive load. Used heuristic thresholds instead of perfect models for speed. Accepted occasional misclassification (flagged via "low confidence" tags in UI) to avoid missing critical urgency entirely.
 
 ---
 
-## Part 2: The Prototype Application
+## Part 2: The Concept Simulator Application
 
-To demonstrate how the LLM reasoning would function in reality, this repository includes a "Concept Simulator" web app built with React (Vite) and Tailwind CSS.
+To demonstrate how the LLM reasoning would function in reality, this repository includes a "Concept Simulator" web app built with React (Vite) and Tailwind CSS. 
 
-### What it does:
-1. **Raw Data Interception:** The left panel simulates a noisy stream of events across Slack, Jira, and Email happening in the background.
-2. **Digest Generation:** The right panel serves as the "Founder Dashboard." Clicking "Generate Heartbeat" pushes the raw intercepted noise through the logic described in the design doc to produce a clean, 3-bullet actionable digest.
+### Core Features Exhibited:
+1. **"Where should I focus" Engine:** Translates raw sentiment shifts into top-level priority lists.
+2. **Delta Detection:** Only extracts new occurrences since the last poll.
+3. **Auto-Escalation Triggers:** Tells the founder exactly *how* to de-escalate if a risk score turns red.
 
 ### Running Locally
 
@@ -38,8 +44,5 @@ npm run dev
 
 ### Tech Stack
 * React 18 (Vite)
-* Tailwind CSS for styling
+* Tailwind CSS V3 for rapid styling
 * Lucide React for iconography
-
-## Deployment
-This project is continuously deployed to Vercel and can be viewed at: **[Insert Vercel Link Here]**
