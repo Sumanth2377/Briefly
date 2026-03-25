@@ -71,11 +71,11 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-300 font-sans selection:bg-indigo-500/30">
+    <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       
       {/* LEFT PANEL - Firehose */}
-      <div className="w-1/2 border-r border-slate-800/50 flex flex-col bg-slate-950/40 relative z-10 shadow-2xl">
-        <div className="px-8 py-6 border-b border-slate-800/50 flex justify-between items-center bg-slate-900/60 backdrop-blur-md z-20">
+      <div className="w-1/2 border-r border-white/5 flex flex-col bg-slate-950 relative z-10">
+        <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-slate-950 z-20">
           <div>
             <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
               <Activity className="w-4 h-4 text-indigo-400" />
@@ -83,8 +83,8 @@ function App() {
             </h2>
             <p className="text-xs text-slate-400 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 bg-slate-800/80 text-slate-300 rounded-md border border-slate-700/50 shadow-inner">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 bg-white/5 text-slate-300 rounded-md border border-white/[0.08]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             Live
           </div>
         </div>
@@ -93,10 +93,10 @@ function App() {
           {stream.map((item, idx) => {
             if (!item) return null;
             return (
-            <div key={item.id || idx} className="animate-3d-slide group p-5 rounded-2xl bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800/60 transition-all duration-300 shadow-lg">
+            <div key={item.id || idx} className="animate-3d-slide group p-5 rounded-2xl bg-[#0F172A]/80 border border-white/5 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-slate-900/80 shadow-inner border border-slate-700/50">
+                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
                     {getSourceIcon(item.type)}
                   </div>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{item.source}</span>
@@ -118,7 +118,8 @@ function App() {
       </div>
 
       {/* RIGHT PANEL - Digest */}
-      <div className="w-1/2 flex flex-col relative overflow-y-auto bg-slate-950/20">
+      <div className="w-1/2 flex flex-col relative overflow-y-auto bg-[#0B0F19]">
+        
         <div className="p-12 flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
           
           <div className="mb-10 mt-8">
@@ -129,16 +130,16 @@ function App() {
           </div>
 
           {!digest ? (
-             <div className="flex-1 flex flex-col items-start justify-center pb-24">
+             <div className="flex-1 flex flex-col items-center justify-center pb-24">
               <button
                 onClick={handleGenerateHeartbeat}
                 disabled={isGenerating || stream.length === 0}
-                className="group flex items-center justify-center gap-3 px-8 py-4 text-sm font-bold text-white transition-all duration-300 bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.2)] hover:shadow-[0_0_30px_rgba(79,70,229,0.4)] border border-indigo-500/30 rounded-xl focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                className="group flex items-center justify-center gap-3 px-8 py-4 text-sm font-bold text-white transition-all duration-300 bg-indigo-600 hover:bg-indigo-500 border border-white/10 rounded-xl shadow-md focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isGenerating ? (
                   <><Loader2 className="w-4 h-4 animate-spin text-white/80" /> Compressing Context...</>
                 ) : (
-                  <><Zap className="w-4 h-4 text-indigo-300" /> Generate Intelligence</>
+                  <><Zap className="w-4 h-4 text-white" /> Generate Intelligence</>
                 )}
               </button>
              </div>
@@ -146,14 +147,14 @@ function App() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
               
               {/* Header */}
-              <div className="flex justify-between items-end mb-8 border-b border-slate-800 pb-4">
+              <div className="flex justify-between items-end mb-8 border-b border-white/5 pb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-white tracking-tight">Executive Digest</h3>
                   <p className="text-[11px] text-slate-400 mt-1.5 uppercase tracking-widest font-bold flex items-center gap-1.5">
                     <Clock className="w-3 h-3" /> Last updated: {digest.timestamp}
                   </p>
                 </div>
-                <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20 shadow-inner">
+                <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
                   LLM Evaluated
                 </div>
               </div>
@@ -165,12 +166,12 @@ function App() {
                 </h4>
                 <div className="space-y-4">
                   {digest.focus.map((item, i) => (
-                    <div key={i} className="group flex flex-col p-5 rounded-xl bg-slate-900/50 border border-slate-800/80 hover:border-indigo-500/30 hover:bg-slate-800/50 transition-all duration-300 shadow-md relative overflow-hidden">
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div key={i} className="group flex flex-col p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden">
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-start gap-3 flex-1">
-                          <div className="mt-0.5 bg-slate-950 p-1.5 rounded shadow-inner">
+                          <div className="mt-0.5 bg-slate-900 p-1.5 rounded border border-white/5">
                             {item.isPositive ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
                           </div>
                           <div>
@@ -186,13 +187,13 @@ function App() {
                         </div>
                       </div>
                       
-                      <div className="ml-10 flex items-center gap-2 bg-slate-950/30 w-fit px-3 py-1.5 rounded-lg border border-slate-800/80">
+                      <div className="ml-10 flex items-center gap-2 bg-black/20 w-fit px-3 py-1.5 rounded-lg border border-white/5">
                         <ArrowRight className="w-3 h-3 text-slate-500" />
                         <span className="text-xs font-semibold text-slate-300">{item.impact}</span>
                       </div>
 
                       {/* Explainable AI */}
-                      <div className="ml-10 mt-3 overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-300 opacity-0 group-hover:opacity-100 text-[10px] text-slate-500 font-mono tracking-tight bg-black/20 p-2 rounded border border-white/5">
+                      <div className="ml-10 mt-3 overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-300 opacity-0 group-hover:opacity-100 text-[10px] text-slate-500 font-mono tracking-tight bg-black/40 p-2 rounded border border-white/5">
                         {item.reason}
                       </div>
                     </div>
@@ -207,14 +208,14 @@ function App() {
                 </h4>
                 <div className="grid grid-cols-1 gap-5">
                   {digest.projects.map((proj, i) => (
-                    <div key={i} className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 shadow-lg">
+                    <div key={i} className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
                       
                       <div className="flex justify-between items-center mb-4">
                         <h5 className="text-base font-bold text-white tracking-wide">{proj.name}</h5>
                         {getStatusBadge(proj.status, proj.statusReason)}
                       </div>
 
-                      <p className="text-sm text-slate-300 leading-relaxed font-light mb-5 bg-slate-950/30 p-3 rounded-lg border border-slate-800/50">{proj.summary}</p>
+                      <p className="text-sm text-slate-300 leading-relaxed font-light mb-5 bg-black/20 p-3 rounded-lg border border-white/5">{proj.summary}</p>
 
                       <div className="space-y-2 mb-5">
                         <h6 className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Recent Deltas</h6>
@@ -227,14 +228,14 @@ function App() {
                       </div>
 
                       {proj.recommendation && (
-                        <div className="mt-5 pt-4 border-t border-slate-800 flex items-start gap-2">
+                        <div className="mt-5 pt-4 border-t border-white/5 flex items-start gap-2">
                           <AlertTriangle className="w-4 h-4 text-rose-400 mt-0.5" />
                           <p className="text-sm text-rose-300 font-semibold tracking-wide">{proj.recommendation}</p>
                         </div>
                       )}
                       
                       {proj.status === 'healthy' && !proj.recommendation && (
-                         <div className="mt-5 pt-4 border-t border-slate-800 flex items-start gap-2">
+                         <div className="mt-5 pt-4 border-t border-white/5 flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5" />
                             <p className="text-sm text-emerald-300 font-semibold tracking-wide">Stable — no intervention required.</p>
                          </div>
