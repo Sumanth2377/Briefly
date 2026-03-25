@@ -39,7 +39,9 @@ function App() {
     let index = 0;
     const interval = setInterval(() => {
       if (index < rawDataStream.length) {
-        setStream((prev) => [...prev, rawDataStream[index]]);
+        // Fix: Capture the exact item synchronously to avoid React async updater closure bugs
+        const currentItem = rawDataStream[index]; 
+        setStream((prev) => [...prev, currentItem]);
         index++;
       } else {
         clearInterval(interval);
@@ -82,8 +84,11 @@ function App() {
         </div>
         
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-24">
-          {stream.map((item) => (
-            <div key={item.id} className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {stream.map((item, idx) => {
+            // Failsafe rendering to prevent catastrophic React tree crashes
+            if (!item) return null;
+            return (
+            <div key={item.id || idx} className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {getIconForType(item.type)}
@@ -98,7 +103,8 @@ function App() {
                 {item.text}
               </p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
