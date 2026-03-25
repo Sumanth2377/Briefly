@@ -45,14 +45,22 @@ function App() {
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
-      if (index < rawDataStream.length) {
-        const currentItem = rawDataStream[index]; 
-        setStream((prev) => [...prev, currentItem]);
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 1200);
+      const baseItem = rawDataStream[index % rawDataStream.length];
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const currentItem = { 
+        ...baseItem, 
+        id: Date.now() + Math.random().toString(), 
+        time: timeStr 
+      };
+      
+      setStream((prev) => {
+        const newStream = [...prev, currentItem];
+        if (newStream.length > 25) newStream.shift(); // Keep stream from getting too incredibly long
+        return newStream;
+      });
+      index++;
+    }, 2000); // 2 second steady interval
     return () => clearInterval(interval);
   }, []);
 
@@ -74,8 +82,8 @@ function App() {
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       
       {/* LEFT PANEL - Firehose */}
-      <div className="w-1/2 border-r border-white/5 flex flex-col bg-slate-950 relative z-10">
-        <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-slate-950 z-20">
+      <div className="w-1/2 border-r border-white/5 flex flex-col bg-[#050505] relative z-10">
+        <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#050505] z-20">
           <div>
             <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
               <Activity className="w-4 h-4 text-indigo-400" />
@@ -93,10 +101,10 @@ function App() {
           {stream.map((item, idx) => {
             if (!item) return null;
             return (
-            <div key={item.id || idx} className="animate-3d-slide group p-5 rounded-2xl bg-[#0F172A]/80 border border-white/5 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300">
+            <div key={item.id} className="animate-3d-slide group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-slate-700 hover:bg-white/[0.04] transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                  <div className="p-2 rounded-lg bg-black border border-white/10 shadow-sm">
                     {getSourceIcon(item.type)}
                   </div>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{item.source}</span>
