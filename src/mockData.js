@@ -15,17 +15,25 @@ export const getHeartbeatDigest = () => {
   const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return {
     timestamp: timeStr,
+    globalDeltas: [
+      'PharmaTech moved from Watch → Risk',
+      'Sustained inactivity detected on Project Nexus',
+      '1 new BD expansion opportunity logged (GlobalBank)'
+    ],
     focus: [
       {
         id: 'f1',
         client: 'PharmaTech',
         text: 'Tone shifted to negative regarding project timeline',
         impact: 'High churn risk.',
+        consequence: 'If ignored: client churn likely within next interaction.',
         confidence: 'High',
+        confidenceContext: 'based on tone shift across 2 distinct threads',
         reason: 'no dev reply + negative sentiment + delay > 4h',
         timeAgo: '45 mins ago',
         isPositive: false,
-        action: 'Draft De-escalation Email'
+        action: 'Draft De-escalation Email',
+        actionContext: 'Includes context from last 3 emails'
       },
       {
         id: 'f2',
@@ -33,17 +41,21 @@ export const getHeartbeatDigest = () => {
         text: 'Inquired about upgrading Enterprise tier (+50 seats)',
         impact: 'Expansion / BD Opportunity.',
         confidence: 'Very High',
+        confidenceContext: 'explicit intent in inbound email',
         reason: 'client explicitly asked for seat pricing in inbound email',
         timeAgo: '12 mins ago',
         isPositive: true,
-        action: 'Draft BD Intro' // Business Development Upsell
+        action: 'Draft BD Intro',
+        actionContext: 'Drafts introductory expansion pricing playbook'
       },
       {
         id: 'f3',
         client: 'Acme Corp',
         text: 'Upcoming sync is missing critical prep document',
         impact: 'May delay final project approval.',
+        consequence: 'If ignored: sync will likely be unproductive or rescheduled.',
         confidence: 'High',
+        confidenceContext: 'calendar validation matched against drive assets',
         reason: 'calendar meeting < 1 hr + no linked docs detected',
         timeAgo: '15 mins ago',
         isPositive: false
@@ -61,7 +73,7 @@ export const getHeartbeatDigest = () => {
           'Received urgent email from John',
           'DB optimization ticket formally blocked'
         ],
-        recommendation: 'Action: Contact Eng Lead for ETA.',
+        recommendation: 'Action: Contact Eng Lead for ETA. (Owner: Backend Team)',
         confidence: 'High Confidence'
       },
       {
@@ -74,7 +86,7 @@ export const getHeartbeatDigest = () => {
         deltas: [
           'Legal compliance task untouched for 72h'
         ],
-        recommendation: 'Action: Reach out to Legal to unblock.',
+        recommendation: 'Action: Reach out to Legal to unblock. (Owner: Compliance)',
         confidence: 'High Confidence'
       },
       {
@@ -87,7 +99,8 @@ export const getHeartbeatDigest = () => {
         deltas: [
           'Zero Github/Jira activity for 24h'
         ],
-        recommendation: 'Action: Check with TL for status.',
+        missingData: 'No architectural roadmap logged for tracking.',
+        recommendation: 'Action: Check with TL for status. (Owner: Platform)',
         confidence: 'Medium Confidence'
       },
       {
@@ -101,6 +114,7 @@ export const getHeartbeatDigest = () => {
           'Migration lock cleared over Slack',
           'Pipeline resumed successfully'
         ],
+        missingData: 'No explicit deployment sign-off recorded from QA.',
         recommendation: null,
         confidence: 'High Confidence'
       },

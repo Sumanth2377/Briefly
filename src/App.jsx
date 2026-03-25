@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -81,16 +81,15 @@ function App() {
 
   const handleDraftAction = (id) => {
     setActiveDraft(id);
-    setTimeout(() => setActiveDraft(null), 2000); // Simulate generative draft
+    setTimeout(() => setActiveDraft(null), 2000); 
   };
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       
-      {/* MAC MENU BAR SIMULATION STYLING (Subtle native border top feeling) */}
       <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
 
-      {/* LEFT PANEL - Firehose */}
+      {/* LEFT PANEL */}
       <div className="w-1/2 border-r border-white/5 flex flex-col bg-[#050505] relative z-10">
         <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#050505] z-20">
           <div>
@@ -136,7 +135,6 @@ function App() {
 
       {/* RIGHT PANEL - Digest */}
       <div className="w-1/2 flex flex-col relative overflow-y-auto bg-[#0B0F19] scroll-smooth">
-        
         <div className="p-12 flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
           
           <div className="mb-10 mt-8 flex justify-between items-start">
@@ -172,7 +170,7 @@ function App() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
               
               {/* Header */}
-              <div className="flex justify-between items-end mb-8 border-b border-white/5 pb-4">
+              <div className="flex justify-between items-end mb-6 border-b border-white/5 pb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-white tracking-tight">Executive Digest</h3>
                   <p className="text-[11px] text-slate-400 mt-1.5 uppercase tracking-widest font-bold flex items-center gap-1.5">
@@ -181,6 +179,22 @@ function App() {
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
                   LLM Evaluated
+                </div>
+              </div>
+
+              {/* TEMPORAL AWARENESS: Global Deltas */}
+              <div className="mb-10 p-5 rounded-xl bg-indigo-500/[0.03] border border-indigo-500/10 shadow-sm relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
+                <h4 className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <RefreshCw className="w-3 h-3" /> Since last update
+                </h4>
+                <div className="space-y-1.5">
+                  {digest.globalDeltas.map((delta, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[13px] text-slate-300">
+                      <span className="text-indigo-500 mt-0.5">•</span> 
+                      <span className="font-medium">{delta}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
               
@@ -194,7 +208,7 @@ function App() {
                     <div key={i} className="group flex flex-col p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${item.isPositive ? 'bg-emerald-500/50' : 'bg-indigo-500/50'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
                       
-                      <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="mt-0.5 bg-slate-900 p-1.5 rounded border border-white/5">
                             {item.isPositive ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
@@ -208,9 +222,20 @@ function App() {
                         </div>
                         <div className="flex flex-col items-end gap-1.5 flex-shrink-0 mt-1">
                           <span className="text-[10px] text-slate-400 tracking-wide font-medium">{item.timeAgo}</span>
-                          <span className="text-[10px] uppercase font-bold text-slate-500">{item.confidence} Confidence</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-500" title={item.confidenceContext || ''}>
+                            {item.confidence} Confidence
+                            {item.confidenceContext && <Info className="w-3 h-3 inline ml-1 opacity-50" />}
+                          </span>
                         </div>
                       </div>
+
+                      {/* CONSEQUENCE MODELING */}
+                      {item.consequence && (
+                        <div className="ml-10 mb-3 flex items-center gap-2">
+                           <AlertOctagon className="w-3 h-3 text-rose-400/80" />
+                           <span className="text-[11px] font-medium text-rose-300/80">{item.consequence}</span>
+                        </div>
+                      )}
                       
                       <div className="ml-10 flex flex-wrap gap-3 items-center">
                         <div className="flex items-center gap-2 bg-black/20 w-fit px-3 py-1.5 rounded-lg border border-white/5">
@@ -218,22 +243,26 @@ function App() {
                           <span className={`text-xs font-semibold ${item.isPositive ? 'text-emerald-300' : 'text-slate-300'}`}>{item.impact}</span>
                         </div>
 
-                        {/* BD / DRAFT ACTIONS - The "Zero-Action-Latency" Insight */}
                         {item.action && (
-                          <button 
-                            onClick={() => handleDraftAction(item.id)}
-                            className="flex items-center gap-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 w-fit px-3 py-1.5 rounded-lg border border-indigo-500/30 transition-all font-semibold text-xs relative overflow-hidden"
-                          >
-                            {activeDraft === item.id ? (
-                               <><Loader2 className="w-3 h-3 animate-spin" /> Drafting in background...</>
-                            ) : (
-                               <><PenSquare className="w-3 h-3" /> {item.action}</>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleDraftAction(item.id)}
+                              className="flex items-center gap-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 w-fit px-3 py-1.5 rounded-lg border border-indigo-500/30 transition-all font-semibold text-xs relative overflow-hidden"
+                            >
+                              {activeDraft === item.id ? (
+                                 <><Loader2 className="w-3 h-3 animate-spin" /> Drafting in background...</>
+                              ) : (
+                                 <><PenSquare className="w-3 h-3" /> {item.action}</>
+                              )}
+                            </button>
+                            {/* ACTION CONTEXT */}
+                            {item.actionContext && (
+                              <span className="text-[10px] text-slate-500 italic">({item.actionContext})</span>
                             )}
-                          </button>
+                          </div>
                         )}
                       </div>
 
-                      {/* Explainable AI */}
                       <div className="ml-10 mt-3 flex items-start gap-2">
                         <span className="shrink-0 text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Why flagged:</span>
                         <p className="text-[10px] text-slate-400 font-mono tracking-tight bg-black/20 px-2.5 py-1 rounded inline-block border border-white/5">
@@ -253,7 +282,7 @@ function App() {
                 </h4>
                 <div className="grid grid-cols-1 gap-5">
                   {digest.projects.map((proj, i) => (
-                    <div key={i} className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <div key={i} className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 shadow-sm">
                       
                       <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
@@ -265,7 +294,6 @@ function App() {
                         {getStatusBadge(proj.status, proj.statusReason)}
                       </div>
 
-                      {/* Delivery Overview / ETA Metrics */}
                       <div className="mb-5 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
                         <span className="text-sm text-slate-300 leading-relaxed font-light">{proj.summary}</span>
                         <div className="text-right flex flex-col justify-center border-l border-white/5 pl-4 ml-4 min-w-max">
@@ -286,17 +314,26 @@ function App() {
                         ))}
                       </div>
 
+                      {/* MISSING DATA SIGNAL (Advanced) */}
+                      {proj.missingData && (
+                        <div className="mt-5 mb-1 flex items-center gap-2 bg-amber-500/10 w-fit px-3 py-1.5 rounded-md border border-amber-500/20">
+                          <AlertTriangle className="w-3 h-3 text-amber-500/80" />
+                          <span className="text-[10px] text-amber-400/90 font-medium">Missing: {proj.missingData}</span>
+                        </div>
+                      )}
+
+                      {/* ACCOUNTABILITY OWNER / CTA */}
                       {proj.recommendation && (
-                        <div className="mt-5 pt-4 border-t border-white/5 flex items-start gap-2">
+                        <div className="mt-4 pt-4 border-t border-white/5 flex items-start gap-2">
                           <AlertTriangle className="w-4 h-4 text-rose-400 mt-0.5" />
                           <p className="text-sm text-rose-300 font-semibold tracking-wide">{proj.recommendation}</p>
                         </div>
                       )}
                       
                       {proj.status === 'healthy' && !proj.recommendation && (
-                         <div className="mt-5 pt-4 border-t border-white/5 flex items-start gap-2">
+                         <div className="mt-4 pt-4 border-t border-white/5 flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5" />
-                            <p className="text-sm text-emerald-300 font-semibold tracking-wide">Stable — no intervention required.</p>
+                            <p className="text-sm text-emerald-300 font-semibold tracking-wide">Stable — no action needed, delivery on track.</p>
                          </div>
                       )}
 
