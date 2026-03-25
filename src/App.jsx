@@ -148,8 +148,8 @@ function App() {
             </div>
             <div className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md shadow-sm">
               <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase flex items-center gap-2">
-                <Activity className="w-3 h-3 text-slate-600" />
-                MacBook Agent
+                <Activity className="w-3 h-3 text-emerald-500/70" />
+                macOS Local Node
               </p>
             </div>
           </div>
@@ -234,8 +234,11 @@ function App() {
                       </div>
 
                       {/* Explainable AI */}
-                      <div className="ml-10 mt-3 overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-300 opacity-0 group-hover:opacity-100 text-[10px] text-slate-500 font-mono tracking-tight bg-black/40 p-2 rounded border border-white/5">
-                        {item.reason}
+                      <div className="ml-10 mt-3 flex items-start gap-2">
+                        <span className="shrink-0 text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Why flagged:</span>
+                        <p className="text-[10px] text-slate-400 font-mono tracking-tight bg-black/20 px-2.5 py-1 rounded inline-block border border-white/5">
+                          {item.reason}
+                        </p>
                       </div>
 
                     </div>

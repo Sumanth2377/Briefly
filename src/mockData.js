@@ -22,7 +22,7 @@ export const getHeartbeatDigest = () => {
         text: 'Tone shifted to negative regarding project timeline',
         impact: 'High churn risk.',
         confidence: 'High',
-        reason: 'Flagged because: no dev reply + negative sentiment + delay > 4h',
+        reason: 'no dev reply + negative sentiment + delay > 4h',
         timeAgo: '45 mins ago',
         isPositive: false,
         action: 'Draft De-escalation Email'
@@ -33,7 +33,7 @@ export const getHeartbeatDigest = () => {
         text: 'Inquired about upgrading Enterprise tier (+50 seats)',
         impact: 'Expansion / BD Opportunity.',
         confidence: 'Very High',
-        reason: 'Flagged because: client explicitly asked for seat pricing in inbound email',
+        reason: 'client explicitly asked for seat pricing in inbound email',
         timeAgo: '12 mins ago',
         isPositive: true,
         action: 'Draft BD Intro' // Business Development Upsell
@@ -44,7 +44,7 @@ export const getHeartbeatDigest = () => {
         text: 'Upcoming sync is missing critical prep document',
         impact: 'May delay final project approval.',
         confidence: 'High',
-        reason: 'Flagged because: calendar meeting < 1 hr + no linked docs detected',
+        reason: 'calendar meeting < 1 hr + no linked docs detected',
         timeAgo: '15 mins ago',
         isPositive: false
       }
@@ -56,12 +56,12 @@ export const getHeartbeatDigest = () => {
         status: 'risk',
         statusReason: 'Client Escalation',
         eta: 'At Risk (T-minus 2 days)',
-        summary: 'Model accuracy reached target, but client expects deployment timeline confirmation immediately.',
+        summary: 'Accuracy met target; client awaiting deployment timeline confirmation.',
         deltas: [
           'Received urgent email from John',
           'DB optimization ticket formally blocked'
         ],
-        recommendation: 'Action: Escalate to Eng Lead for ETA, draft reply to client.',
+        recommendation: 'Action: Contact Eng Lead for ETA.',
         confidence: 'High Confidence'
       },
       {
@@ -74,7 +74,7 @@ export const getHeartbeatDigest = () => {
         deltas: [
           'Legal compliance task untouched for 72h'
         ],
-        recommendation: 'Action: Ping Legal team to unblock engineering.',
+        recommendation: 'Action: Reach out to Legal to unblock.',
         confidence: 'High Confidence'
       },
       {
@@ -83,11 +83,11 @@ export const getHeartbeatDigest = () => {
         status: 'watch',
         statusReason: 'Silent Failure',
         eta: '75% On-Track',
-        summary: 'No engineering movement or activity detected for an unusual duration. Potential ghosting.',
+        summary: 'No engineering movement or activity detected for an unusual duration. Sustained inactivity detected.',
         deltas: [
           'Zero Github/Jira activity for 24h'
         ],
-        recommendation: 'Action: Ping TL for brief status check.',
+        recommendation: 'Action: Check with TL for status.',
         confidence: 'Medium Confidence'
       },
       {
