@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, MessageSquare, Layout, Zap, Activity, Clock, Loader2 } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getIconForType = (type) => {
   switch(type) {
-    case 'slack': return <MessageSquare className="w-4 h-4 text-pink-400" />;
-    case 'email': return <Mail className="w-4 h-4 text-blue-400" />;
-    case 'jira': return <Layout className="w-4 h-4 text-blue-500" />;
-    case 'system': return <Activity className="w-4 h-4 text-emerald-400" />;
-    default: return <Activity className="w-4 h-4 text-slate-400" />;
+    case 'slack': return <span className="text-pink-400 text-lg">💬</span>;
+    case 'email': return <span className="text-blue-400 text-lg">📧</span>;
+    case 'jira': return <span className="text-blue-500 text-lg">📋</span>;
+    case 'system': return <span className="text-emerald-400 text-lg">⚙️</span>;
+    default: return <span className="text-slate-400 text-lg">📌</span>;
   }
 };
 
@@ -71,7 +70,7 @@ function App() {
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm z-10">
           <div>
             <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-400" />
+              <span className="text-xl">🌊</span>
               Raw Data Firehose
             </h2>
             <p className="text-sm text-slate-400 mt-1">Intercepting tool events, logs, and client emails</p>
@@ -88,10 +87,10 @@ function App() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {getIconForType(item.type)}
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{item.source}</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">{item.source}</span>
                 </div>
                 <span className="text-xs text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {item.time}
+                  ⏳ {item.time}
                 </span>
               </div>
               <div className="mb-1 text-sm font-medium text-slate-300">{item.author}</div>
@@ -109,7 +108,7 @@ function App() {
           
           <div className="mb-8 text-center mt-8">
             <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-4 border border-indigo-500/20">
-              <Zap className="w-8 h-8 text-indigo-400" />
+              <span className="text-3xl">⚡</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Decision Latency Digest</h1>
             <p className="text-slate-400 text-sm max-w-sm mx-auto">
@@ -125,7 +124,7 @@ function App() {
                 className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/30 overflow-hidden"
               >
                 <span className="relative z-10 flex items-center gap-2 text-lg">
-                  {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> Analyzing 10k+ Tokens...</> : <><Zap className="w-5 h-5" /> Generate Heartbeat</>}
+                  {isGenerating ? <>⏳ Analyzing 10k+ Tokens...</> : <>⚡ Generate Heartbeat</>}
                 </span>
               </button>
              </div>
@@ -139,19 +138,19 @@ function App() {
                   <p className="text-xs text-slate-400">Batched at {digest.timestamp}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20">
-                  <Zap className="w-3 h-3" /> LLM Aggregated
+                  🧠 LLM Aggregated
                 </div>
               </div>
               
               {/* Where to Focus */}
               <div className="p-5 border-b border-white/5 bg-indigo-500/5">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-indigo-300 uppercase tracking-widest mb-4">
-                  <Zap className="w-4 h-4" /> Where should I focus?
+                  🎯 Where should I focus?
                 </h4>
                 <div className="space-y-3">
                   {digest.focus.map((item, i) => (
                     <div key={i} className="flex gap-3 items-start bg-slate-950/50 p-3 rounded-lg border border-indigo-500/10">
-                      <Activity className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm mt-0.5">👉</span>
                       <p className="text-sm text-slate-200 leading-snug">{item.text}</p>
                     </div>
                   ))}
@@ -194,8 +193,7 @@ function App() {
                       <div className="flex flex-col gap-2 pt-3 border-t border-slate-700/50 mt-3">
                         {proj.recommendation && (
                           <div className="flex gap-2 items-center text-xs font-medium text-rose-300 bg-rose-500/10 p-2 rounded border border-rose-500/20">
-                            <Zap className="w-3 h-3 flex-shrink-0" />
-                            Escalation: {proj.recommendation}
+                            🚨 Escalation: {proj.recommendation}
                           </div>
                         )}
                         {proj.confidence && (
