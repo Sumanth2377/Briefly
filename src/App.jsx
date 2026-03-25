@@ -11,21 +11,21 @@ const getIconForType = (type) => {
   }
 };
 
+const getStatusIcon = (status) => {
+  switch(status) {
+    case 'healthy': return '🟢';
+    case 'watch': return '🟡';
+    case 'risk': return '🔴';
+    default: return '⚪';
+  }
+};
+
 const getStatusColor = (status) => {
   switch(status) {
     case 'healthy': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
     case 'watch': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
     case 'risk': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
     default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
-  }
-};
-
-const getStatusDot = (status) => {
-  switch(status) {
-    case 'healthy': return 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]';
-    case 'watch': return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]';
-    case 'risk': return 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse';
-    default: return 'bg-slate-500';
   }
 };
 
@@ -39,7 +39,6 @@ function App() {
     let index = 0;
     const interval = setInterval(() => {
       if (index < rawDataStream.length) {
-        // Fix: Capture the exact item synchronously to avoid React async updater closure bugs
         const currentItem = rawDataStream[index]; 
         setStream((prev) => [...prev, currentItem]);
         index++;
@@ -85,7 +84,6 @@ function App() {
         
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth pb-24">
           {stream.map((item, idx) => {
-            // Failsafe rendering to prevent catastrophic React tree crashes
             if (!item) return null;
             return (
             <div key={item.id || idx} className="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -141,7 +139,7 @@ function App() {
               <div className="p-5 border-b border-white/5 flex justify-between items-center bg-slate-800/40">
                 <div>
                   <h3 className="text-lg font-bold text-white tracking-tight">Executive Digest</h3>
-                  <p className="text-xs text-slate-400">Batched at {digest.timestamp}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Last updated: {digest.timestamp}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20">
                   🧠 LLM Aggregated
@@ -149,15 +147,31 @@ function App() {
               </div>
               
               {/* Where to Focus */}
-              <div className="p-5 border-b border-white/5 bg-indigo-500/5">
+              <div className="p-5 border-b border-white/5 bg-opacity-50 bg-indigo-950/20">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-indigo-300 uppercase tracking-widest mb-4">
                   🎯 Where should I focus?
                 </h4>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {digest.focus.map((item, i) => (
-                    <div key={i} className="flex gap-3 items-start bg-slate-950/50 p-3 rounded-lg border border-indigo-500/10">
-                      <span className="text-sm mt-0.5">👉</span>
-                      <p className="text-sm text-slate-200 leading-snug">{item.text}</p>
+                    <div key={i} className="flex gap-3 items-start bg-slate-950/60 p-4 rounded-lg border border-indigo-500/10 group">
+                      <span className="text-sm mt-0.5">{item.isPositive ? '✅' : '🔴'}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-sm text-slate-200">
+                            {item.client && <strong className="text-white font-bold">{item.client}: </strong>}
+                            {item.text} <span className="text-slate-500 text-xs font-medium ml-1">(confidence: {item.confidence.toLowerCase()})</span>
+                          </p>
+                          <span className="text-[10px] text-slate-500 font-medium ml-3 flex-shrink-0">{item.timeAgo}</span>
+                        </div>
+                        <p className="text-xs font-medium text-emerald-400/90 mt-1">
+                          <span className="text-slate-500 mr-1">→</span> {item.impact}
+                        </p>
+                        
+                        {/* Why am I seeing this? (Reveal on Hover) */}
+                        <div className="mt-2 text-[10px] text-slate-500/80 font-mono tracking-tight opacity-0 group-hover:opacity-100 transition-opacity">
+                          {item.reason}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -166,48 +180,49 @@ function App() {
               {/* Projects List */}
               <div className="p-5">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  Project Health & Deltas
+                  Project risks & updates
                 </h4>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {digest.projects.map((proj, i) => (
-                    <div key={i} className="group p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 transition-all">
+                    <div key={i} className="group p-5 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 transition-all">
                       
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start mb-1">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2.5 h-2.5 rounded-full ${getStatusDot(proj.status)}`} />
-                          <h5 className="text-base font-bold text-white">{proj.name}</h5>
+                          <span className="text-sm">{getStatusIcon(proj.status)}</span>
+                          <h5 className="text-lg font-bold text-white tracking-tight">{proj.name}</h5>
                         </div>
                         <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${getStatusColor(proj.status)}`}>
-                          {proj.status.toUpperCase()}
+                          {proj.statusReason.toUpperCase()}
                         </span>
                       </div>
 
-                      <p className="text-xs font-medium text-slate-400 mb-2">— {proj.statusReason}</p>
-                      <p className="text-sm text-slate-300 leading-relaxed mb-4">{proj.summary}</p>
+                      <p className="text-sm text-slate-300 leading-relaxed mb-4 pl-6">{proj.summary}</p>
 
                       {/* Deltas */}
-                      <div className="mb-3 space-y-1">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Delta (Since Last Update):</p>
+                      <div className="mb-4 pl-6 space-y-1.5">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Delta (Since Last Update):</p>
                         {proj.deltas.map((delta, j) => (
                           <div key={j} className="flex items-center gap-2 text-xs text-slate-300">
-                            <span className="text-indigo-400 font-bold">+</span> {delta}
+                            <span className="text-indigo-400 font-bold opacity-70">+</span> {delta}
                           </div>
                         ))}
                       </div>
 
                       {/* Escalation & Confidence */}
-                      <div className="flex flex-col gap-2 pt-3 border-t border-slate-700/50 mt-3">
-                        {proj.recommendation && (
-                          <div className="flex gap-2 items-center text-xs font-medium text-rose-300 bg-rose-500/10 p-2 rounded border border-rose-500/20">
-                            🚨 Escalation: {proj.recommendation}
+                      {proj.recommendation && (
+                        <div className="ml-6 flex flex-col gap-2 pt-3 border-t border-slate-700/30 mt-3">
+                          <div className="flex gap-2 items-center text-xs font-bold text-rose-300 bg-rose-500/10 px-3 py-2 rounded-lg border border-rose-500/20">
+                            {proj.recommendation}
                           </div>
-                        )}
-                        {proj.confidence && (
-                          <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-                            {proj.confidence}
-                          </p>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                      
+                      {/* Sub-signals */}
+                      {proj.status === 'healthy' && !proj.recommendation && (
+                         <div className="ml-6 flex gap-2 items-center text-xs font-bold text-emerald-400/80 bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/10 mt-3">
+                            All stable — no action required.
+                         </div>
+                      )}
 
                     </div>
                   ))}
