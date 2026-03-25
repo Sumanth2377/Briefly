@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, MessageSquare, Layout, Zap, Activity, Clock, CheckCircle, AlertTriangle, XCircle, Loader2, ArrowRight, Target, ShieldAlert, Cpu } from 'lucide-react';
+import { Mail, MessageSquare, Layout, Zap, Activity, Clock, Loader2 } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getIconForType = (type) => {
@@ -7,7 +7,7 @@ const getIconForType = (type) => {
     case 'slack': return <MessageSquare className="w-4 h-4 text-pink-400" />;
     case 'email': return <Mail className="w-4 h-4 text-blue-400" />;
     case 'jira': return <Layout className="w-4 h-4 text-blue-500" />;
-    case 'system': return <Cpu className="w-4 h-4 text-emerald-400" />;
+    case 'system': return <Activity className="w-4 h-4 text-emerald-400" />;
     default: return <Activity className="w-4 h-4 text-slate-400" />;
   }
 };
@@ -139,19 +139,19 @@ function App() {
                   <p className="text-xs text-slate-400">Batched at {digest.timestamp}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20">
-                  <Cpu className="w-3 h-3" /> LLM Aggregated
+                  <Zap className="w-3 h-3" /> LLM Aggregated
                 </div>
               </div>
               
               {/* Where to Focus */}
               <div className="p-5 border-b border-white/5 bg-indigo-500/5">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-indigo-300 uppercase tracking-widest mb-4">
-                  <Target className="w-4 h-4" /> Where should I focus?
+                  <Zap className="w-4 h-4" /> Where should I focus?
                 </h4>
                 <div className="space-y-3">
                   {digest.focus.map((item, i) => (
                     <div key={i} className="flex gap-3 items-start bg-slate-950/50 p-3 rounded-lg border border-indigo-500/10">
-                      <ArrowRight className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                      <Activity className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
                       <p className="text-sm text-slate-200 leading-snug">{item.text}</p>
                     </div>
                   ))}
@@ -194,7 +194,7 @@ function App() {
                       <div className="flex flex-col gap-2 pt-3 border-t border-slate-700/50 mt-3">
                         {proj.recommendation && (
                           <div className="flex gap-2 items-center text-xs font-medium text-rose-300 bg-rose-500/10 p-2 rounded border border-rose-500/20">
-                            <ShieldAlert className="w-3 h-3 flex-shrink-0" />
+                            <Zap className="w-3 h-3 flex-shrink-0" />
                             Escalation: {proj.recommendation}
                           </div>
                         )}
