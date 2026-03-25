@@ -4,9 +4,7 @@
 
 Briefly is a decision-assistant prototype designed for non-technical founders managing delivery and business development. Traditional dashboards focus on system logs or raw engineering metrics; Briefly focuses exclusively on business outcomes, consequence modeling, and reducing founder decision-latency.
 
-![Briefly UI Screenshot](https://via.placeholder.com/1000x500?text=Briefly+Executive+Digest) <!-- Replace with real screenshot if needed -->
-
-## 🚀 Key Features
+## Key Features
 
 Instead of a passive status report, Briefly acts as an active **Chief of Staff**:
 - **Temporal Awareness:** Tracks exact data deltas since the last 30-minute interval (e.g., "PharmaTech moved from Watch → Risk").
@@ -16,7 +14,7 @@ Instead of a passive status report, Briefly acts as an active **Chief of Staff**
 
 ---
 
-## 🧠 System Design Document
+## System Design Document
 
 **Digest Contents & Cadence**
 The digest is a decision assistant, not a report. Every 30 minutes, it provides a 1-second mental snapshot (e.g., “2 risks, 1 opportunity”) followed by prioritized items: client escalations, delivery risks (with precise ETAs), and BD expansion signals. Each item is compressed into a single actionable line and includes quick actions (e.g., draft reply) to drastically reduce response time.
@@ -32,12 +30,12 @@ The primary design trade-off was aggressively prioritizing *clarity* over comple
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 - **Frontend Framework:** React 18 + Vite 
 - **Styling:** Tailwind CSS (Custom Inter typography, sleek 3D perspective CSS transforms)
 - **Icons:** Lucide-React 
 
-## 🏃‍♂️ Getting Started
+## Getting Started
 ```bash
 # Clone the repository
 git clone https://github.com/Sumanth2377/Briefly.git
