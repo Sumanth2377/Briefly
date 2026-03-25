@@ -29,7 +29,7 @@ export const getHeartbeatDigest = () => {
         consequence: 'If ignored: client churn likely within next interaction.',
         confidence: 'High',
         confidenceContext: 'based on tone shift across 2 distinct threads',
-        reason: 'no dev reply + negative sentiment + delay > 4h',
+        reason: 'No dev response • Negative sentiment • Delay > 4h',
         timeAgo: '45 mins ago',
         isPositive: false,
         action: 'Draft De-escalation Email',
@@ -42,7 +42,7 @@ export const getHeartbeatDigest = () => {
         impact: 'Expansion / BD Opportunity.',
         confidence: 'Very High',
         confidenceContext: 'explicit intent in inbound email',
-        reason: 'client explicitly asked for seat pricing in inbound email',
+        reason: 'Explicit intent detected • Inbound email • Pricing inquiry',
         timeAgo: '12 mins ago',
         isPositive: true,
         action: 'Draft BD Intro',
@@ -56,7 +56,7 @@ export const getHeartbeatDigest = () => {
         consequence: 'If ignored: sync will likely be unproductive or rescheduled.',
         confidence: 'High',
         confidenceContext: 'calendar validation matched against drive assets',
-        reason: 'calendar meeting < 1 hr + no linked docs detected',
+        reason: 'Calendar sync < 1 hr • No presentation docs attached',
         timeAgo: '15 mins ago',
         isPositive: false
       }
@@ -99,7 +99,7 @@ export const getHeartbeatDigest = () => {
         deltas: [
           'Zero Github/Jira activity for 24h'
         ],
-        missingData: 'No architectural roadmap logged for tracking.',
+        missingData: 'Architectural roadmap not logged',
         recommendation: 'Action: Check with TL for status. (Owner: Platform)',
         confidence: 'Medium Confidence'
       },
@@ -114,7 +114,7 @@ export const getHeartbeatDigest = () => {
           'Migration lock cleared over Slack',
           'Pipeline resumed successfully'
         ],
-        missingData: 'No explicit deployment sign-off recorded from QA.',
+        missingData: 'QA deployment sign-off not recorded',
         recommendation: null,
         confidence: 'High Confidence'
       },

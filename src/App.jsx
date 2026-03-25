@@ -173,9 +173,15 @@ function App() {
               <div className="flex justify-between items-end mb-6 border-b border-white/5 pb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-white tracking-tight">Executive Digest</h3>
-                  <p className="text-[11px] text-slate-400 mt-1.5 uppercase tracking-widest font-bold flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" /> Last updated: {digest.timestamp}
-                  </p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+                      <Clock className="w-3 h-3" /> {digest.timestamp}
+                    </p>
+                    <span className="text-slate-700">•</span>
+                    <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">
+                      2 Risks, 1 Opportunity, 2 Stable
+                    </p>
+                  </div>
                 </div>
                 <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
                   LLM Evaluated
