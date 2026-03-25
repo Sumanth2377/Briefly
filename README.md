@@ -1,36 +1,32 @@
-# Livo Heartbeat: Reducing Decision Latency (Option A)
+# Livo Heartbeat Prototype
 
-This repository contains the prototype and the accompanying system design document for the **Livo Heartbeat** feature.
-
-> *"The goal is not to inform, but to reduce decision latency."*
+This repository contains the concept simulator web app and the system design document for the **Livo Heartbeat** feature (Option A).
 
 ## Part 1: Design Document (Decision Latency Driven)
 
-**1. What’s in the digest?**  
-We organize strictly by *client unit* rather than tool. Instead of repeating context, we only show *what changed* (+2 angry emails, pipeline resolved). We aggressively surface "silent failures" (e.g., no engineering activity on a priority client for 12 hours) alongside contextual, time-sensitive reminders ("Client call in 1 hr; no prep doc ready"). 
+The digest should act as a decision assistant, not a status report. Every 30 minutes, it surfaces only what needs attention.
 
-**2. Urgency vs. Informational**  
-Every project receives a dynamic risk score (🟢 Healthy, 🟡 Watch, 🔴 At Risk). "Urgent" means a project shifted exactly to "At Risk" (e.g., *🔴 2 failed pipeline runs + pending client reply*). We use LLMs for compression and sentiment tracking, catching sudden negative tone shifts.
+It includes: (1) urgent alerts (client escalation, missed deadlines, failed pipelines), (2) project snapshots with risk labels (Healthy / Watch / At Risk + reason), (3) pending client conversations (>3–4 hours without reply), and (4) key updates since the last cycle. Each item is compressed into one line to keep it scannable within 30 seconds.
 
-**3. Tools & Justification**  
-*   **Slack/Email (MCP):** Real-time client signal (source of truth).
-*   **DB (Postgres):** Structured project state.
-*   **Logs/Monitoring:** System reliability and silent-failure detection.  
-*Key distinction:* The LLM is used exclusively for compression and judgment, not raw data retrieval.
+Urgency is determined using simple rules: negative client sentiment, overdue tasks, repeated system failures, or inactivity where progress is expected. Informational updates are shown only if they represent meaningful change.
 
-**4. Hardest Calls (Trade-offs)**  
-Ignored 95% of low-priority logs entirely to reduce cognitive load. Used heuristic thresholds instead of perfect models for speed. Accepted occasional misclassification (flagged via "low confidence" tags in UI) to avoid missing critical urgency entirely.
+Data is pulled from Slack/email (client signals), project DB (task state), and system logs (pipeline health). An LLM is used for summarization, sentiment detection, and prioritization, not raw retrieval.
+
+Key trade-offs: I prioritised brevity over completeness, ignoring low-level logs to reduce noise. I used heuristic thresholds instead of complex models for reliability. Some misclassification is acceptable if it ensures critical issues are never missed.
+
+The goal is to reduce decision latency and highlight exactly where intervention is needed.
 
 ---
 
 ## Part 2: The Concept Simulator Application
 
-To demonstrate how the LLM reasoning would function in reality, this repository includes a "Concept Simulator" web app built with React (Vite) and Tailwind CSS. 
+To demonstrate how the LLM reasoning would function in reality, this repository includes a highly polished "Concept Simulator" web app built with React (Vite) and Tailwind CSS. 
 
-### Core Features Exhibited:
-1. **"Where should I focus" Engine:** Translates raw sentiment shifts into top-level priority lists.
-2. **Delta Detection:** Only extracts new occurrences since the last poll.
-3. **Auto-Escalation Triggers:** Tells the founder exactly *how* to de-escalate if a risk score turns red.
+### Core Features Exhibited (Live in Prototype):
+1. **"Where should I focus" Engine:** Identifies >4hr pending client conversations and sudden sentiment shifts.
+2. **Project Snapshots & Risk Labels:** Dynamically tags projects as 🟢 Healthy, 🟡 Watch, or 🔴 At Risk, displaying explicit reasons for the status switch.
+3. **Delta Detection:** Only extracts new occurrences since the last poll.
+4. **Auto-Escalation Triggers:** Tells the founder exactly *how* to intervene.
 
 ### Running Locally
 
@@ -45,4 +41,6 @@ npm run dev
 ### Tech Stack
 * React 18 (Vite)
 * Tailwind CSS V3 for rapid styling
-* Lucide React for iconography
+
+## Deployment
+This project is continuously deployed to Vercel and can be viewed at: **[Insert Vercel Link Here]**
