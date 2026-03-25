@@ -9,9 +9,27 @@
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0A0A0A;
+    background-color: #020617;
     color: #f8fafc;
   }
+}
+
+/* Custom 3D Slide In Animation */
+@keyframes slideIn3D {
+  0% {
+    opacity: 0;
+    transform: perspective(1000px) rotateX(-20deg) translateY(30px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+
+.animate-3d-slide {
+  animation: slideIn3D 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top center;
+  will-change: transform, opacity;
 }
 
 /* Custom Scrollbar for sleek UI */
