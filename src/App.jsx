@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -40,6 +40,7 @@ function App() {
   const [stream, setStream] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [digest, setDigest] = useState(null);
+  const [activeDraft, setActiveDraft] = useState(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -56,11 +57,11 @@ function App() {
       
       setStream((prev) => {
         const newStream = [...prev, currentItem];
-        if (newStream.length > 25) newStream.shift(); // Keep stream from getting too incredibly long
+        if (newStream.length > 25) newStream.shift(); 
         return newStream;
       });
       index++;
-    }, 2000); // 2 second steady interval
+    }, 2000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -75,12 +76,20 @@ function App() {
     setTimeout(() => {
       setDigest(getHeartbeatDigest());
       setIsGenerating(false);
-    }, 2800);
+    }, 2400);
+  };
+
+  const handleDraftAction = (id) => {
+    setActiveDraft(id);
+    setTimeout(() => setActiveDraft(null), 2000); // Simulate generative draft
   };
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       
+      {/* MAC MENU BAR SIMULATION STYLING (Subtle native border top feeling) */}
+      <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
+
       {/* LEFT PANEL - Firehose */}
       <div className="w-1/2 border-r border-white/5 flex flex-col bg-[#050505] relative z-10">
         <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#050505] z-20">
@@ -89,19 +98,19 @@ function App() {
               <Activity className="w-4 h-4 text-indigo-400" />
               Signal Stream
             </h2>
-            <p className="text-xs text-slate-400 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
+            <p className="text-xs text-slate-500 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 bg-white/5 text-slate-300 rounded-md border border-white/[0.08]">
+          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 bg-white/[0.03] text-slate-400 rounded-md border border-white/[0.05]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             Live
           </div>
         </div>
         
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-5 scroll-smooth pb-32">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-4 scroll-smooth pb-32">
           {stream.map((item, idx) => {
             if (!item) return null;
             return (
-            <div key={item.id} className="animate-3d-slide group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-slate-700 hover:bg-white/[0.04] transition-all duration-300">
+            <div key={item.id} className="animate-3d-slide group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-slate-800 hover:bg-white/[0.04] transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-lg bg-black border border-white/10 shadow-sm">
@@ -109,13 +118,13 @@ function App() {
                   </div>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{item.source}</span>
                 </div>
-                <span className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium tracking-wide">
-                  <Clock className="w-3 h-3 opacity-60" /> {item.time}
+                <span className="text-[11px] text-slate-600 flex items-center gap-1.5 font-medium tracking-wide">
+                  <Clock className="w-3 h-3 opacity-40" /> {item.time}
                 </span>
               </div>
               <div className="flex flex-col gap-1.5 ml-1">
                 <span className="text-xs font-bold text-slate-200">{item.author}</span>
-                <p className={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200 font-medium' : 'text-slate-300'}`}>
+                <p className={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200/90 font-medium' : 'text-slate-400'}`}>
                   {item.text}
                 </p>
               </div>
@@ -126,15 +135,23 @@ function App() {
       </div>
 
       {/* RIGHT PANEL - Digest */}
-      <div className="w-1/2 flex flex-col relative overflow-y-auto bg-[#0B0F19]">
+      <div className="w-1/2 flex flex-col relative overflow-y-auto bg-[#0B0F19] scroll-smooth">
         
         <div className="p-12 flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
           
-          <div className="mb-10 mt-8">
-            <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">Briefly</h1>
-            <p className="text-slate-400 text-sm tracking-wide font-light">
-              Synthesizing noise into decisive operational intelligence.
-            </p>
+          <div className="mb-10 mt-8 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">Briefly</h1>
+              <p className="text-slate-400 text-sm tracking-wide font-light">
+                Synthesizing noise into decisive operational intelligence.
+              </p>
+            </div>
+            <div className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md shadow-sm">
+              <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase flex items-center gap-2">
+                <Activity className="w-3 h-3 text-slate-600" />
+                MacBook Agent
+              </p>
+            </div>
           </div>
 
           {!digest ? (
@@ -147,7 +164,7 @@ function App() {
                 {isGenerating ? (
                   <><Loader2 className="w-4 h-4 animate-spin text-white/80" /> Compressing Context...</>
                 ) : (
-                  <><Zap className="w-4 h-4 text-white" /> Generate Intelligence</>
+                  <><Sparkles className="w-4 h-4 text-white" /> Generate Intelligence</>
                 )}
               </button>
              </div>
@@ -175,12 +192,12 @@ function App() {
                 <div className="space-y-4">
                   {digest.focus.map((item, i) => (
                     <div key={i} className="group flex flex-col p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden">
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${item.isPositive ? 'bg-emerald-500/50' : 'bg-indigo-500/50'} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
                       
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-start gap-3 flex-1">
                           <div className="mt-0.5 bg-slate-900 p-1.5 rounded border border-white/5">
-                            {item.isPositive ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
+                            {item.isPositive ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-rose-400" />}
                           </div>
                           <div>
                             <p className="text-sm text-slate-200 mt-1">
@@ -195,15 +212,32 @@ function App() {
                         </div>
                       </div>
                       
-                      <div className="ml-10 flex items-center gap-2 bg-black/20 w-fit px-3 py-1.5 rounded-lg border border-white/5">
-                        <ArrowRight className="w-3 h-3 text-slate-500" />
-                        <span className="text-xs font-semibold text-slate-300">{item.impact}</span>
+                      <div className="ml-10 flex flex-wrap gap-3 items-center">
+                        <div className="flex items-center gap-2 bg-black/20 w-fit px-3 py-1.5 rounded-lg border border-white/5">
+                          <ArrowRight className="w-3 h-3 text-slate-500" />
+                          <span className={`text-xs font-semibold ${item.isPositive ? 'text-emerald-300' : 'text-slate-300'}`}>{item.impact}</span>
+                        </div>
+
+                        {/* BD / DRAFT ACTIONS - The "Zero-Action-Latency" Insight */}
+                        {item.action && (
+                          <button 
+                            onClick={() => handleDraftAction(item.id)}
+                            className="flex items-center gap-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 w-fit px-3 py-1.5 rounded-lg border border-indigo-500/30 transition-all font-semibold text-xs relative overflow-hidden"
+                          >
+                            {activeDraft === item.id ? (
+                               <><Loader2 className="w-3 h-3 animate-spin" /> Drafting in background...</>
+                            ) : (
+                               <><PenSquare className="w-3 h-3" /> {item.action}</>
+                            )}
+                          </button>
+                        )}
                       </div>
 
                       {/* Explainable AI */}
                       <div className="ml-10 mt-3 overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-300 opacity-0 group-hover:opacity-100 text-[10px] text-slate-500 font-mono tracking-tight bg-black/40 p-2 rounded border border-white/5">
                         {item.reason}
                       </div>
+
                     </div>
                   ))}
                 </div>
@@ -212,18 +246,32 @@ function App() {
               {/* Projects List */}
               <div>
                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  Project Risks & Updates
+                  Project Delivery Trajectories
                 </h4>
                 <div className="grid grid-cols-1 gap-5">
                   {digest.projects.map((proj, i) => (
                     <div key={i} className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
                       
                       <div className="flex justify-between items-center mb-4">
-                        <h5 className="text-base font-bold text-white tracking-wide">{proj.name}</h5>
+                        <div className="flex items-center gap-3">
+                          <h5 className="text-base font-bold text-white tracking-wide">{proj.name}</h5>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[9px] uppercase font-bold tracking-widest border border-white/5">
+                            {proj.client}
+                          </span>
+                        </div>
                         {getStatusBadge(proj.status, proj.statusReason)}
                       </div>
 
-                      <p className="text-sm text-slate-300 leading-relaxed font-light mb-5 bg-black/20 p-3 rounded-lg border border-white/5">{proj.summary}</p>
+                      {/* Delivery Overview / ETA Metrics */}
+                      <div className="mb-5 flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
+                        <span className="text-sm text-slate-300 leading-relaxed font-light">{proj.summary}</span>
+                        <div className="text-right flex flex-col justify-center border-l border-white/5 pl-4 ml-4 min-w-max">
+                          <p className="text-[9px] uppercase font-bold text-slate-500 tracking-widest mb-1">ETA Delivery</p>
+                          <p className={`text-xs font-bold truncate ${proj.status === 'risk' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            {proj.eta}
+                          </p>
+                        </div>
+                      </div>
 
                       <div className="space-y-2 mb-5">
                         <h6 className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">Recent Deltas</h6>
