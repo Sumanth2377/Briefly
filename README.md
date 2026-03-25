@@ -1,6 +1,6 @@
-# Livo Heartbeat Prototype
+# Briefly Prototype
 
-This repository contains the concept simulator web app and the system design document for the **Livo Heartbeat** feature (Option A).
+This repository contains the concept simulator web app and the system design document for the **Briefly** feature (Option A).
 
 ## Part 1: Design Document (Decision Latency Driven)
 

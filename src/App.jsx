@@ -116,7 +116,7 @@ function App() {
             <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-4 border border-indigo-500/20">
               <span className="text-3xl">⚡</span>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Decision Latency Digest</h1>
+            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Briefly</h1>
             <p className="text-slate-400 text-sm max-w-sm mx-auto">
               Reducing operational noise into pure actionable intelligence.
             </p>
