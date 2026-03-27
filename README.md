@@ -35,6 +35,7 @@ The primary design trade-off was aggressively prioritizing *clarity* over comple
 - **Styling:** Tailwind CSS (Custom Inter typography, sleek 3D perspective CSS transforms)
 - **Icons:** Lucide-React 
 
+
 ## Getting Started
 ```bash
 # Clone the repository
