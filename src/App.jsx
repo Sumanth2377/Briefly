@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -36,6 +36,37 @@ const getStatusBadge = (status, text) => {
   }
 };
 
+const RISK_KEYWORDS = ['blocked', 'failure', 'risk', 'urgent', 'delay', 'escalation', 'silent failure', 'slipping'];
+
+function AlertToast({ toasts, onDismiss }) {
+  if (!toasts.length) return null;
+  return (
+    <div className="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none">
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className="pointer-events-auto flex items-start gap-3 px-4 py-3.5 rounded-xl bg-rose-950 border border-rose-500/40 shadow-2xl shadow-rose-900/30 animate-in slide-in-from-right-4 fade-in duration-300 max-w-sm"
+        >
+          <div className="mt-0.5 shrink-0 p-1.5 rounded-md bg-rose-500/20 border border-rose-500/30">
+            <BellRing className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-0.5">Critical Signal</p>
+            <p className="text-xs text-rose-100/90 leading-relaxed font-light">{t.text}</p>
+            <p className="text-[10px] text-rose-500/70 mt-1 font-mono">{t.source} · {t.time}</p>
+          </div>
+          <button
+            onClick={() => onDismiss(t.id)}
+            className="shrink-0 mt-0.5 p-1 rounded hover:bg-rose-500/20 text-rose-500 hover:text-rose-300 transition-colors"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const [stream, setStream] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -46,6 +77,9 @@ function App() {
   const isPausedRef = useRef(isPaused);
   const [filterSource, setFilterSource] = useState('all');
   const [isCopied, setIsCopied] = useState(false);
+  const [alertToasts, setAlertToasts] = useState([]);
+
+  const dismissToast = (id) => setAlertToasts(prev => prev.filter(t => t.id !== id));
 
   useEffect(() => {
     isPausedRef.current = isPaused;
@@ -63,6 +97,15 @@ function App() {
         id: Date.now() + Math.random().toString(), 
         time: timeStr 
       };
+
+      // Fire a toast for system alerts or risk-keyword signals
+      const isRisk = currentItem.type === 'system' ||
+        RISK_KEYWORDS.some(kw => currentItem.text.toLowerCase().includes(kw));
+      if (isRisk) {
+        const toastId = currentItem.id;
+        setAlertToasts(prev => [...prev.slice(-3), { id: toastId, text: currentItem.text, source: currentItem.source, time: timeStr }]);
+        setTimeout(() => setAlertToasts(prev => prev.filter(t => t.id !== toastId)), 5000);
+      }
       
       setStream((prev) => {
         const newStream = [...prev, currentItem];
@@ -105,6 +148,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
+      <AlertToast toasts={alertToasts} onDismiss={dismissToast} />
       
       <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
 
