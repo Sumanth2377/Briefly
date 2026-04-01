@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -42,10 +42,19 @@ function App() {
   const [digest, setDigest] = useState(null);
   const [activeDraft, setActiveDraft] = useState(null);
   const scrollRef = useRef(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(isPaused);
+  const [filterSource, setFilterSource] = useState('all');
+  const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
 
   useEffect(() => {
     let index = 0;
     const interval = setInterval(() => {
+      if (isPausedRef.current) return;
       const baseItem = rawDataStream[index % rawDataStream.length];
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
@@ -84,6 +93,16 @@ function App() {
     setTimeout(() => setActiveDraft(null), 2000); 
   };
 
+  const handleCopyDigest = () => {
+    if (!digest) return;
+    const text = `Executive Digest - ${digest.timestamp}\n\n` +
+      `Global Deltas:\n${digest.globalDeltas.map(d => '- ' + d).join('\n')}\n\n` +
+      `Focus:\n${digest.focus.map(f => `- ${f.client || 'Internal'}: ${f.text} (${f.impact})`).join('\n')}\n`;
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       
@@ -91,22 +110,52 @@ function App() {
 
       {/* LEFT PANEL */}
       <div className="w-1/2 border-r border-white/5 flex flex-col bg-[#050505] relative z-10">
-        <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#050505] z-20">
-          <div>
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
-              <Activity className="w-4 h-4 text-indigo-400" />
-              Signal Stream
-            </h2>
-            <p className="text-xs text-slate-500 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
+        <div className="px-8 py-6 border-b border-white/5 flex flex-col gap-4 bg-[#050505] z-20">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
+                <Activity className="w-4 h-4 text-indigo-400" />
+                Signal Stream
+              </h2>
+              <p className="text-xs text-slate-500 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
+            </div>
+            <button 
+              onClick={() => setIsPaused(!isPaused)}
+              className={`flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-3 py-1.5 rounded-md border transition-colors ${
+                isPaused 
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20' 
+                  : 'bg-white/[0.03] text-emerald-400 border-white/[0.05] hover:bg-white/[0.08]'
+              }`}
+            >
+              {isPaused ? (
+                <><Play className="w-3 h-3" /> Paused</>
+              ) : (
+                <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Streaming</>
+              )}
+            </button>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-2.5 py-1 bg-white/[0.03] text-slate-400 rounded-md border border-white/[0.05]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live
+          
+          <div className="flex gap-2">
+            {['all', 'slack', 'email', 'jira', 'system'].map(source => (
+              <button
+                key={source}
+                onClick={() => setFilterSource(source)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  filterSource === source 
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
+                    : 'bg-white/[0.02] text-slate-500 border border-white/5 hover:bg-white/[0.05]'
+                }`}
+              >
+                {source === 'all' && <Filter className="w-3 h-3" />}
+                {source !== 'all' && getSourceIcon(source)}
+                {source}
+              </button>
+            ))}
           </div>
         </div>
         
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-4 scroll-smooth pb-32">
-          {stream.map((item, idx) => {
+          {stream.filter(item => filterSource === 'all' || item.type === filterSource).map((item, idx) => {
             if (!item) return null;
             return (
             <div key={item.id} className="animate-3d-slide group p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-slate-800 hover:bg-white/[0.04] transition-all duration-300">
@@ -183,8 +232,16 @@ function App() {
                     </p>
                   </div>
                 </div>
-                <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
-                  LLM Evaluated
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCopyDigest}
+                    className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-md border border-white/10 transition-colors"
+                  >
+                    {isCopied ? <><Check className="w-3 h-3 text-emerald-400" /> Copied</> : <><Copy className="w-3 h-3" /> Share</>}
+                  </button>
+                  <div className="text-[10px] font-bold tracking-widest uppercase text-indigo-400 px-3 py-1.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
+                    LLM Evaluated
+                  </div>
                 </div>
               </div>
 
