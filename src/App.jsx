@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -81,6 +81,8 @@ function App() {
   const [pinnedSignals, setPinnedSignals] = useState([]);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [digestHistory, setDigestHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Derived: live signal counts per source
   const signalStats = ['slack', 'email', 'jira', 'system'].map(type => ({
@@ -143,7 +145,9 @@ function App() {
   const handleGenerateHeartbeat = () => {
     setIsGenerating(true);
     setTimeout(() => {
-      setDigest(getHeartbeatDigest());
+      const newDigest = getHeartbeatDigest();
+      setDigest(newDigest);
+      setDigestHistory(prev => [{ ...newDigest, idx: prev.length + 1 }, ...prev].slice(0, 10));
       setIsGenerating(false);
     }, 2400);
   };
@@ -374,6 +378,40 @@ function App() {
               </p>
             </div>
           </div>
+
+          {/* DIGEST HISTORY DROPDOWN */}
+          {digestHistory.length > 1 && (
+            <div className="mb-6 relative">
+              <button
+                onClick={() => setShowHistory(h => !h)}
+                className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 rounded-md border border-white/[0.06] transition-colors"
+              >
+                <History className="w-3 h-3" />
+                History ({digestHistory.length})
+                {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {showHistory && (
+                <div className="mt-2 rounded-xl border border-white/[0.06] bg-slate-900/80 backdrop-blur overflow-hidden">
+                  {digestHistory.map((d, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setDigest(d); setShowHistory(false); }}
+                      className={`w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/[0.04] last:border-0 ${ d.timestamp === digest?.timestamp ? 'bg-indigo-500/10' : '' }`}
+                    >
+                      <span className="flex items-center gap-2 text-xs text-slate-300">
+                        <Clock className="w-3 h-3 text-slate-600" />
+                        Digest #{digestHistory.length - i}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">{d.timestamp}</span>
+                      {d.timestamp === digest?.timestamp && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-400 ml-2">Current</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {!digest ? (
              <div className="flex-1 flex flex-col items-center justify-center pb-24">
