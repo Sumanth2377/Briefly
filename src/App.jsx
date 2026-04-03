@@ -82,6 +82,13 @@ function App() {
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Derived: live signal counts per source
+  const signalStats = ['slack', 'email', 'jira', 'system'].map(type => ({
+    type,
+    count: stream.filter(s => s.type === type).length,
+  }));
+  const totalSignals = stream.length;
+
   const dismissToast = (id) => setAlertToasts(prev => prev.filter(t => t.id !== id));
 
   const togglePin = (item) => {
@@ -189,6 +196,37 @@ function App() {
             </button>
           </div>
           
+          {/* LIVE SIGNAL STATS */}
+          {totalSignals > 0 && (
+            <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600 shrink-0">Signal Mix</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {signalStats.map(({ type, count }) => {
+                  const pct = totalSignals > 0 ? Math.round((count / totalSignals) * 100) : 0;
+                  const colors = {
+                    slack:  { bar: 'bg-pink-500',   text: 'text-pink-400' },
+                    email:  { bar: 'bg-blue-400',   text: 'text-blue-400' },
+                    jira:   { bar: 'bg-blue-600',   text: 'text-blue-500' },
+                    system: { bar: 'bg-emerald-500', text: 'text-emerald-400' },
+                  }[type];
+                  return (
+                    <div key={type} className="flex items-center gap-1.5">
+                      <span className={`text-[9px] font-bold uppercase tracking-widest ${colors.text}`}>{type}</span>
+                      <div className="w-16 h-1 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${colors.bar} transition-all duration-500`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-[9px] text-slate-600 font-mono">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="ml-auto text-[9px] font-mono text-slate-700 shrink-0">{totalSignals} total</span>
+            </div>
+          )}
+
           <div className="flex gap-2">
             {['all', 'slack', 'email', 'jira', 'system'].map(source => (
               <button
