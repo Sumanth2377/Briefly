@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2 } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 const getSourceIcon = (type) => {
@@ -83,6 +83,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [digestHistory, setDigestHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   // Derived: live signal counts per source
   const signalStats = ['slack', 'email', 'jira', 'system'].map(type => ({
@@ -174,7 +175,7 @@ function App() {
       <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
 
       {/* LEFT PANEL */}
-      <div className="w-1/2 border-r border-white/5 flex flex-col bg-[#050505] relative z-10">
+      <div className={`border-r border-white/5 flex flex-col bg-[#050505] relative z-10 transition-all duration-500 ease-in-out overflow-hidden ${ focusMode ? 'w-0 min-w-0 opacity-0' : 'w-1/2 opacity-100' }`}>
         <div className="px-8 py-6 border-b border-white/5 flex flex-col gap-4 bg-[#050505] z-20">
           <div className="flex justify-between items-center">
             <div>
@@ -361,7 +362,7 @@ function App() {
       </div>
 
       {/* RIGHT PANEL - Digest */}
-      <div className="w-1/2 flex flex-col relative overflow-y-auto bg-[#0B0F19] scroll-smooth">
+      <div className={`flex flex-col relative overflow-y-auto bg-[#0B0F19] scroll-smooth transition-all duration-500 ease-in-out ${ focusMode ? 'w-full' : 'w-1/2' }`}>
         <div className="p-12 flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
           
           <div className="mb-10 mt-8 flex justify-between items-start">
@@ -371,11 +372,25 @@ function App() {
                 Synthesizing noise into decisive operational intelligence.
               </p>
             </div>
-            <div className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md shadow-sm">
-              <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase flex items-center gap-2">
-                <Activity className="w-3 h-3 text-emerald-500/70" />
-                macOS Local Node
-              </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFocusMode(f => !f)}
+                title={focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
+                className={`flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-md border transition-all duration-200 ${
+                  focusMode
+                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
+                    : 'bg-white/[0.03] text-slate-500 border-white/[0.06] hover:text-slate-200 hover:bg-white/[0.08]'
+                }`}
+              >
+                {focusMode ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                {focusMode ? 'Exit Focus' : 'Focus'}
+              </button>
+              <div className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-md shadow-sm">
+                <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase flex items-center gap-2">
+                  <Activity className="w-3 h-3 text-emerald-500/70" />
+                  macOS Local Node
+                </p>
+              </div>
             </div>
           </div>
 
