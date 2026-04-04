@@ -37,6 +37,21 @@ const getStatusBadge = (status, text) => {
 };
 
 const RISK_KEYWORDS = ['blocked', 'failure', 'risk', 'urgent', 'delay', 'escalation', 'silent failure', 'slipping'];
+const POSITIVE_KEYWORDS = ['resolved', 'cleared', 'success', 'completed', 'great', 'working', 'upgrade', 'expansion', 'on-track', 'processed'];
+
+const getSentiment = (text) => {
+  const lower = text.toLowerCase();
+  if (RISK_KEYWORDS.some(k => lower.includes(k))) return 'critical';
+  if (POSITIVE_KEYWORDS.some(k => lower.includes(k))) return 'positive';
+  return 'neutral';
+};
+
+const SentimentBadge = ({ text }) => {
+  const s = getSentiment(text);
+  if (s === 'critical') return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">⚑ Critical</span>;
+  if (s === 'positive') return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">↑ Positive</span>;
+  return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-slate-500/10 text-slate-500 border border-slate-500/20">– Neutral</span>;
+};
 
 function AlertToast({ toasts, onDismiss }) {
   if (!toasts.length) return null;
@@ -350,7 +365,10 @@ function App() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 ml-1">
-                <span className="text-xs font-bold text-slate-200">{item.author}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200">{item.author}</span>
+                  <SentimentBadge text={item.text} />
+                </div>
                 <p className={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200/90 font-medium' : 'text-slate-400'}`}>
                   {item.text}
                 </p>
