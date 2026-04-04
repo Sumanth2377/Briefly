@@ -247,8 +247,10 @@ function App() {
             </div>
           )}
 
-          <div className="flex gap-2">
-            {['all', 'slack', 'email', 'jira', 'system'].map(source => (
+          <div className="flex gap-2 flex-wrap">
+            {['all', 'slack', 'email', 'jira', 'system'].map(source => {
+              const cnt = source === 'all' ? stream.length : stream.filter(s => s.type === source).length;
+              return (
               <button
                 key={source}
                 onClick={() => setFilterSource(source)}
@@ -261,8 +263,12 @@ function App() {
                 {source === 'all' && <Filter className="w-3 h-3" />}
                 {source !== 'all' && getSourceIcon(source)}
                 {source}
+                {cnt > 0 && (
+                  <span className={`ml-0.5 px-1 py-0 rounded text-[9px] font-mono ${filterSource === source ? 'bg-indigo-500/30 text-indigo-200' : 'bg-white/5 text-slate-600'}`}>{cnt}</span>
+                )}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* SEARCH BAR */}
