@@ -53,6 +53,27 @@ const SentimentBadge = ({ text }) => {
   return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-slate-500/10 text-slate-500 border border-slate-500/20">– Neutral</span>;
 };
 
+const ALL_HIGHLIGHT_KEYWORDS = [
+  ...RISK_KEYWORDS.map(k => ({ k, type: 'risk' })),
+  ...POSITIVE_KEYWORDS.map(k => ({ k, type: 'positive' })),
+];
+
+const HighlightedText = ({ text, baseClass }) => {
+  const pattern = new RegExp(`(${ALL_HIGHLIGHT_KEYWORDS.map(({ k }) => k.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})`, 'gi');
+  const parts = text.split(pattern);
+  return (
+    <p className={baseClass}>
+      {parts.map((part, i) => {
+        const match = ALL_HIGHLIGHT_KEYWORDS.find(({ k }) => k.toLowerCase() === part.toLowerCase());
+        if (!match) return part;
+        return match.type === 'risk'
+          ? <mark key={i} className="bg-rose-500/15 text-rose-300 rounded px-0.5 not-italic font-semibold">{part}</mark>
+          : <mark key={i} className="bg-emerald-500/15 text-emerald-300 rounded px-0.5 not-italic font-semibold">{part}</mark>;
+      })}
+    </p>
+  );
+};
+
 function AlertToast({ toasts, onDismiss }) {
   if (!toasts.length) return null;
   return (
@@ -384,9 +405,10 @@ function App() {
                   <span className="text-xs font-bold text-slate-200">{item.author}</span>
                   <SentimentBadge text={item.text} />
                 </div>
-                <p className={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200/90 font-medium' : 'text-slate-400'}`}>
-                  {item.text}
-                </p>
+                <HighlightedText
+                  text={item.text}
+                  baseClass={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200/90 font-medium' : 'text-slate-400'}`}
+                />
               </div>
             </div>
             );
