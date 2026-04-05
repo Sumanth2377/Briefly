@@ -527,6 +527,28 @@ function App() {
                 </div>
               </div>
 
+              {/* RISK POSTURE BANNER */}
+              {(() => {
+                const riskCount = digest.projects.filter(p => p.status === 'risk').length;
+                const watchCount = digest.projects.filter(p => p.status === 'watch').length;
+                const posture = riskCount >= 2 ? 'HIGH' : riskCount === 1 || watchCount >= 2 ? 'ELEVATED' : 'STABLE';
+                const cfg = {
+                  HIGH:     { bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    bar: 'bg-rose-500',    text: 'text-rose-300',    sub: 'text-rose-400/70',    msg: `${riskCount} active risks require immediate attention.` },
+                  ELEVATED: { bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   bar: 'bg-amber-500',   text: 'text-amber-300',   sub: 'text-amber-400/70',   msg: 'Monitor closely — situations could escalate.' },
+                  STABLE:   { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', bar: 'bg-emerald-500', text: 'text-emerald-300', sub: 'text-emerald-400/70', msg: 'All projects tracking well. No immediate action needed.' },
+                }[posture];
+                return (
+                  <div className={`mb-8 flex items-center gap-4 px-5 py-3.5 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+                    <div className={`shrink-0 w-1 h-10 rounded-full ${cfg.bar}`} />
+                    <div className="flex-1">
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${cfg.sub} mb-0.5`}>Overall Risk Posture</p>
+                      <p className={`text-lg font-bold tracking-tight ${cfg.text}`}>{posture}</p>
+                    </div>
+                    <p className="text-xs text-slate-500 font-light leading-relaxed max-w-[200px] text-right">{cfg.msg}</p>
+                  </div>
+                );
+              })()}
+
               {/* TEMPORAL AWARENESS: Global Deltas */}
               <div className="mb-10 p-5 rounded-xl bg-indigo-500/[0.03] border border-indigo-500/10 shadow-sm relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
