@@ -99,6 +99,10 @@ function App() {
   const [digestHistory, setDigestHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [streamSpeed, setStreamSpeed] = useState('normal');
+  const speedRef = useRef(streamSpeed);
+
+  useEffect(() => { speedRef.current = streamSpeed; }, [streamSpeed]);
 
   // Derived: live signal counts per source
   const signalStats = ['slack', 'email', 'jira', 'system'].map(type => ({
@@ -122,18 +126,16 @@ function App() {
 
   useEffect(() => {
     let index = 0;
+    const SPEED_MAP = { slow: 4000, normal: 2000, fast: 800 };
     const interval = setInterval(() => {
       if (isPausedRef.current) return;
       const baseItem = rawDataStream[index % rawDataStream.length];
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
       const currentItem = { 
         ...baseItem, 
         id: Date.now() + Math.random().toString(), 
         time: timeStr 
       };
-
-      // Fire a toast for system alerts or risk-keyword signals
       const isRisk = currentItem.type === 'system' ||
         RISK_KEYWORDS.some(kw => currentItem.text.toLowerCase().includes(kw));
       if (isRisk) {
@@ -141,16 +143,15 @@ function App() {
         setAlertToasts(prev => [...prev.slice(-3), { id: toastId, text: currentItem.text, source: currentItem.source, time: timeStr }]);
         setTimeout(() => setAlertToasts(prev => prev.filter(t => t.id !== toastId)), 5000);
       }
-      
       setStream((prev) => {
         const newStream = [...prev, currentItem];
         if (newStream.length > 25) newStream.shift(); 
         return newStream;
       });
       index++;
-    }, 2000); 
+    }, SPEED_MAP[streamSpeed]);
     return () => clearInterval(interval);
-  }, []);
+  }, [streamSpeed]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -200,20 +201,28 @@ function App() {
               </h2>
               <p className="text-xs text-slate-500 mt-1.5 tracking-wide">Intercepting integration events & communications</p>
             </div>
-            <button 
-              onClick={() => setIsPaused(!isPaused)}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 rounded-md p-0.5">
+                {['slow','normal','fast'].map(s => (
+                  <button key={s} onClick={() => setStreamSpeed(s)}
+                    className={`text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded transition-all ${ streamSpeed === s ? 'bg-indigo-500/30 text-indigo-300' : 'text-slate-600 hover:text-slate-400' }`}>{s}</button>
+                ))}
+              </div>
+              <button 
+                onClick={() => setIsPaused(!isPaused)}
               className={`flex items-center gap-2 text-[10px] font-semibold tracking-widest uppercase px-3 py-1.5 rounded-md border transition-colors ${
                 isPaused 
                   ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20' 
                   : 'bg-white/[0.03] text-emerald-400 border-white/[0.05] hover:bg-white/[0.08]'
               }`}
-            >
-              {isPaused ? (
-                <><Play className="w-3 h-3" /> Paused</>
-              ) : (
-                <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Streaming</>
-              )}
-            </button>
+              >
+                {isPaused ? (
+                  <><Play className="w-3 h-3" /> Paused</>
+                ) : (
+                  <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Streaming</>
+                )}
+              </button>
+            </div>
           </div>
           
           {/* LIVE SIGNAL STATS */}
