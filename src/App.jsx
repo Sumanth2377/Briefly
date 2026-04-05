@@ -205,9 +205,33 @@ function App() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  // KEYBOARD SHORTCUTS
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); setIsPaused(p => !p); }
+      if (e.key === 'g' || e.key === 'G') { if (!digest && stream.length > 0 && !isGenerating) handleGenerateHeartbeat(); }
+      if (e.key === 'f' || e.key === 'F') { setFocusMode(f => !f); }
+      if (e.key === 'Escape') { setSearchQuery(''); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [digest, stream.length, isGenerating]);
+
   return (
     <div className="flex h-screen bg-slate-950 text-slate-300 font-sans selection:bg-indigo-500/30">
       <AlertToast toasts={alertToasts} onDismiss={dismissToast} />
+
+      {/* KEYBOARD SHORTCUT LEGEND */}
+      <div className="fixed bottom-5 left-5 z-50 flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/[0.06] backdrop-blur pointer-events-none">
+        {[['Space','Pause'],['G','Generate'],['F','Focus'],['Esc','Clear search']].map(([key, label]) => (
+          <span key={key} className="flex items-center gap-1.5">
+            <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
+            <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
+          </span>
+        ))}
+      </div>
       
       <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
 
