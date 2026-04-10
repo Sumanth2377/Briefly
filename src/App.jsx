@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -272,6 +272,139 @@ function AutoRefreshCountdown({ onRefresh, isGenerating, digest }) {
   );
 }
 
+// ─── COMMAND PALETTE ─────────────────────────────────────────────────────────
+function CommandPalette({ open, onClose, stream, onGenerate, onTogglePause, isPaused, onToggleFocus, onToggleTheme, theme, onFilterSource, onExport, digest }) {
+  const inputRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(0);
+
+  const staticActions = useMemo(() => [
+    { id: 'generate',     icon: <Sparkles className="w-3.5 h-3.5 text-indigo-400" />,         label: 'Generate Intelligence Digest',        group: 'Actions',  action: () => { onGenerate(); onClose(); } },
+    { id: 'pause',        icon: isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />, label: isPaused ? 'Resume Signal Stream' : 'Pause Signal Stream', group: 'Actions', action: () => { onTogglePause(); onClose(); } },
+    { id: 'focus',        icon: <Maximize2 className="w-3.5 h-3.5 text-slate-400" />,         label: 'Toggle Focus Mode',                   group: 'Actions',  action: () => { onToggleFocus(); onClose(); } },
+    { id: 'theme',        icon: theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />, label: `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`, group: 'Actions', action: () => { onToggleTheme(); onClose(); } },
+    { id: 'export',       icon: <Download className="w-3.5 h-3.5 text-slate-400" />,          label: 'Export Digest as Markdown',           group: 'Actions',  action: () => { onExport(); onClose(); } },
+    { id: 'filter-all',   icon: <Filter className="w-3.5 h-3.5 text-slate-400" />,            label: 'Filter: Show All Sources',            group: 'Filters',  action: () => { onFilterSource('all'); onClose(); } },
+    { id: 'filter-slack', icon: <MessageSquare className="w-3.5 h-3.5 text-pink-400" />,      label: 'Filter: Slack Only',                  group: 'Filters',  action: () => { onFilterSource('slack'); onClose(); } },
+    { id: 'filter-email', icon: <Mail className="w-3.5 h-3.5 text-blue-400" />,               label: 'Filter: Email Only',                  group: 'Filters',  action: () => { onFilterSource('email'); onClose(); } },
+    { id: 'filter-jira',  icon: <LayoutDashboard className="w-3.5 h-3.5 text-blue-500" />,    label: 'Filter: Jira Only',                   group: 'Filters',  action: () => { onFilterSource('jira'); onClose(); } },
+    { id: 'filter-sys',   icon: <Terminal className="w-3.5 h-3.5 text-emerald-400" />,        label: 'Filter: System Alerts Only',          group: 'Filters',  action: () => { onFilterSource('system'); onClose(); } },
+  ], [isPaused, theme, digest]);
+
+  const signalResults = useMemo(() => {
+    if (!query.trim() || query.length < 2) return [];
+    return stream
+      .filter(s => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(query.toLowerCase()))
+      .slice(0, 5)
+      .map(s => ({
+        id: `sig-${s.id}`,
+        icon: getSourceIcon(s.type),
+        label: s.text.length > 72 ? s.text.slice(0, 72) + '…' : s.text,
+        sublabel: `${s.source} · ${s.author} · ${s.time}`,
+        group: 'Live Signals',
+        action: onClose,
+      }));
+  }, [query, stream]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    const actions = q ? staticActions.filter(a => a.label.toLowerCase().includes(q)) : staticActions;
+    return [...actions, ...signalResults];
+  }, [query, staticActions, signalResults]);
+
+  useEffect(() => { setSelected(0); }, [filtered.length]);
+
+  useEffect(() => {
+    if (open) { setTimeout(() => inputRef.current?.focus(), 30); setQuery(''); setSelected(0); }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelected(s => Math.min(s + 1, filtered.length - 1)); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)); }
+      if (e.key === 'Enter')     { e.preventDefault(); filtered[selected]?.action(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, filtered, selected]);
+
+  if (!open) return null;
+
+  const groups = [...new Set(filtered.map(f => f.group))];
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-xl mx-4 rounded-2xl bg-slate-900 border border-white/10 shadow-2xl shadow-black/60 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Search input */}
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.06]">
+          <Command className="w-4 h-4 text-indigo-400 shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search actions or signals…"
+            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+          />
+          <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-500">ESC</kbd>
+        </div>
+
+        {/* Results */}
+        <div className="max-h-80 overflow-y-auto py-2">
+          {filtered.length === 0 && (
+            <p className="text-center text-xs text-slate-600 py-8">No results for "{query}"</p>
+          )}
+          {groups.map(group => (
+            <div key={group}>
+              <p className="px-4 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-600">{group}</p>
+              {filtered.filter(f => f.group === group).map((item) => {
+                const globalIdx = filtered.indexOf(item);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.action}
+                    onMouseEnter={() => setSelected(globalIdx)}
+                    className={`w-full flex items-start gap-3 px-4 py-2.5 transition-colors text-left ${
+                      selected === globalIdx ? 'bg-indigo-500/15' : 'hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    <span className="mt-0.5 shrink-0">{item.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${ selected === globalIdx ? 'text-white' : 'text-slate-300' }`}>{item.label}</p>
+                      {item.sublabel && <p className="text-[10px] text-slate-600 font-mono truncate mt-0.5">{item.sublabel}</p>}
+                    </div>
+                    {selected === globalIdx && (
+                      <kbd className="shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 mt-0.5">↵</kbd>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer hint bar */}
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-white/[0.06] bg-black/20">
+          {[['↑↓', 'Navigate'], ['↵', 'Select'], ['Esc', 'Close']].map(([key, label]) => (
+            <span key={key} className="flex items-center gap-1.5">
+              <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
+              <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
+            </span>
+          ))}
+          <span className="ml-auto text-[9px] text-slate-700 font-mono">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
   const [stream, setStream] = useState([]);
@@ -306,6 +439,9 @@ function App() {
 
   // Feature 6: Show diff
   const [showDiff, setShowDiff] = useState(false);
+
+  // Command Palette
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => { speedRef.current = streamSpeed; }, [streamSpeed]);
 
@@ -450,7 +586,8 @@ function App() {
       if (e.key === 'g' || e.key === 'G') { if (!digest && stream.length > 0 && !isGenerating) handleGenerateHeartbeat(); }
       if (e.key === 'f' || e.key === 'F') { setFocusMode(f => !f); }
       if (e.key === 't' || e.key === 'T') { setTheme(th => th === 'dark' ? 'light' : 'dark'); }
-      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(p => !p); return; }
+      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -473,9 +610,24 @@ function App() {
       <div className={`flex h-screen ${th.bg} ${th.text} font-sans selection:bg-indigo-500/30`}>
         <AlertToast toasts={alertToasts} onDismiss={dismissToast} />
 
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          stream={stream}
+          onGenerate={handleGenerateHeartbeat}
+          onTogglePause={() => setIsPaused(p => !p)}
+          isPaused={isPaused}
+          onToggleFocus={() => setFocusMode(f => !f)}
+          onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          theme={theme}
+          onFilterSource={setFilterSource}
+          onExport={handleExportMarkdown}
+          digest={digest}
+        />
+
         {/* KEYBOARD SHORTCUT LEGEND */}
         <div className="fixed bottom-5 left-5 z-50 flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/[0.06] backdrop-blur pointer-events-none">
-          {[['Space','Pause'],['G','Generate'],['F','Focus'],['T','Theme'],['Esc','Clear']].map(([key, label]) => (
+          {[['Space','Pause'],['G','Generate'],['F','Focus'],['T','Theme'],['Ctrl+K','Palette'],['Esc','Clear']].map(([key, label]) => (
             <span key={key} className="flex items-center gap-1.5">
               <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
               <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
