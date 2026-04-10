@@ -52,6 +52,35 @@ const getSentiment = (text) => {
   return 'neutral';
 };
 
+// ─── URGENCY SCORE (1–10) ────────────────────────────────────────────────────
+const getUrgencyScore = (item) => {
+  let score = 3; // baseline
+  const lower = item.text.toLowerCase();
+  // source weight
+  if (item.type === 'system') score += 3;
+  else if (item.type === 'email') score += 1;
+  // risk keyword hits
+  const riskHits = RISK_KEYWORDS.filter(k => lower.includes(k)).length;
+  score += riskHits * 2;
+  // positive keywords reduce urgency
+  const positiveHits = POSITIVE_KEYWORDS.filter(k => lower.includes(k)).length;
+  score -= positiveHits * 1;
+  return Math.min(10, Math.max(1, score));
+};
+
+const UrgencyBadge = ({ score }) => {
+  const flames = score >= 8 ? 3 : score >= 5 ? 2 : score >= 3 ? 1 : 0;
+  const color  = score >= 8 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+               : score >= 5 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+               : 'text-slate-500 bg-white/[0.03] border-white/[0.06]';
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${color}`}>
+      {'🔥'.repeat(flames) || '·'}
+      <span className="font-mono">{score}</span>
+    </span>
+  );
+};
+
 const SentimentBadge = ({ text }) => {
   const s = getSentiment(text);
   if (s === 'critical') return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">⚑ Critical</span>;
@@ -443,6 +472,9 @@ function App() {
   // Command Palette
   const [paletteOpen, setPaletteOpen] = useState(false);
 
+  // Urgency Priority Sort
+  const [prioritySort, setPrioritySort] = useState(false);
+
   useEffect(() => { speedRef.current = streamSpeed; }, [streamSpeed]);
 
   const dismissToast = (id) => setAlertToasts(prev => prev.filter(t => t.id !== id));
@@ -758,6 +790,25 @@ function App() {
               })}
             </div>
 
+            {/* PRIORITY SORT TOGGLE */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setPrioritySort(p => !p)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                  prioritySort
+                    ? 'bg-rose-500/10 text-rose-300 border-rose-500/20'
+                    : 'bg-white/[0.02] text-slate-500 border border-white/5 hover:bg-white/[0.05]'
+                }`}
+              >
+                🔥 {prioritySort ? 'Priority Sort: On' : 'Priority Sort'}
+              </button>
+              {prioritySort && (
+                <span className="text-[9px] text-rose-400/70 font-mono tracking-widest uppercase animate-pulse">
+                  Ranked by urgency score
+                </span>
+              )}
+            </div>
+
             {/* SEARCH BAR */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
@@ -837,16 +888,23 @@ function App() {
               );
             })()}
 
-            {stream.filter(item => {
-              const matchesSource = filterSource === 'all' || item.type === filterSource;
-              const matchesSearch = !searchQuery || `${item.text} ${item.author} ${item.source}`.toLowerCase().includes(searchQuery.toLowerCase());
-              return matchesSource && matchesSearch;
-            }).map((item) => {
+            {(() => {
+              let items = stream.filter(item => {
+                const matchesSource = filterSource === 'all' || item.type === filterSource;
+                const matchesSearch = !searchQuery || `${item.text} ${item.author} ${item.source}`.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesSource && matchesSearch;
+              });
+              if (prioritySort) {
+                items = [...items].sort((a, b) => getUrgencyScore(b) - getUrgencyScore(a));
+              }
+              return items;
+            })().map((item) => {
               if (!item) return null;
               const isPinned = pinnedSignals.some(p => p.id === item.id);
               const currentTag = signalTags[item.id];
+              const urgency = getUrgencyScore(item);
               return (
-                <div key={item.id} className={`animate-3d-slide group p-5 rounded-2xl border transition-all duration-300 ${ isPinned ? 'bg-indigo-500/[0.04] border-indigo-500/20' : `${th.card} hover:border-slate-800 hover:bg-white/[0.04]`}`}>
+                <div key={item.id} className={`animate-3d-slide group p-5 rounded-2xl border transition-all duration-300 ${ isPinned ? 'bg-indigo-500/[0.04] border-indigo-500/20' : urgency >= 8 ? 'bg-rose-500/[0.03] border-rose-500/10 hover:border-rose-500/20' : `${th.card} hover:border-slate-800 hover:bg-white/[0.04]`}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 rounded-lg bg-black border border-white/10 shadow-sm">
@@ -905,6 +963,7 @@ function App() {
                       <span className="text-xs font-bold text-slate-200">{item.author}</span>
                       <div className="flex items-center gap-1.5">
                         {currentTag && <SignalTagBadge tag={currentTag} />}
+                        <UrgencyBadge score={urgency} />
                         <SentimentBadge text={item.text} />
                       </div>
                     </div>
