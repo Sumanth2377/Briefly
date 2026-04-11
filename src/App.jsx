@@ -88,6 +88,19 @@ const SentimentBadge = ({ text }) => {
   return <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-slate-500/10 text-slate-500 border border-slate-500/20">– Neutral</span>;
 };
 
+// ─── WATCHLIST ─────────────────────────────────────────────────────────────────
+const getWatchlistMatch = (text, watchlist) => {
+  if (!watchlist.length) return null;
+  const lower = text.toLowerCase();
+  return watchlist.find(w => lower.includes(w.toLowerCase())) || null;
+};
+
+const WatchlistBadge = ({ match }) => (
+  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-violet-500/10 text-violet-300 border border-violet-500/20">
+    👁 {match}
+  </span>
+);
+
 // ─── KEYWORD HIGHLIGHT ────────────────────────────────────────────────────────
 const ALL_HIGHLIGHT_KEYWORDS = [
   ...RISK_KEYWORDS.map(k => ({ k, type: 'risk' })),
@@ -475,6 +488,11 @@ function App() {
   // Urgency Priority Sort
   const [prioritySort, setPrioritySort] = useState(false);
 
+  // Client Watchlist
+  const [watchlist, setWatchlist] = useState(['PharmaTech', 'GlobalBank', 'Acme']);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [watchlistInput, setWatchlistInput] = useState('');
+
   useEffect(() => { speedRef.current = streamSpeed; }, [streamSpeed]);
 
   const dismissToast = (id) => setAlertToasts(prev => prev.filter(t => t.id !== id));
@@ -809,6 +827,67 @@ function App() {
               )}
             </div>
 
+            {/* CLIENT WATCHLIST */}
+            <div className={`rounded-xl border overflow-hidden transition-all ${watchlistOpen ? 'border-violet-500/20 bg-violet-500/[0.03]' : 'border-white/[0.05] bg-transparent'}`}>
+              <button
+                onClick={() => setWatchlistOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 hover:bg-violet-500/10 transition-colors"
+              >
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-300">
+                  👁 Watchlist
+                  <span className="px-1.5 py-0 rounded bg-violet-500/20 text-violet-200 font-mono text-[9px]">{watchlist.length}</span>
+                </span>
+                {watchlistOpen ? <ChevronUp className="w-3 h-3 text-violet-400/60" /> : <ChevronDown className="w-3 h-3 text-slate-600" />}
+              </button>
+              {watchlistOpen && (
+                <div className="px-3 pb-3 space-y-2">
+                  {/* Add entry */}
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      const trimmed = watchlistInput.trim();
+                      if (trimmed && !watchlist.includes(trimmed)) {
+                        setWatchlist(w => [...w, trimmed]);
+                      }
+                      setWatchlistInput('');
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={watchlistInput}
+                      onChange={e => setWatchlistInput(e.target.value)}
+                      placeholder="Add client or name…"
+                      className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 transition-all"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2.5 py-1.5 rounded-md bg-violet-500/20 text-violet-300 text-[10px] font-bold border border-violet-500/20 hover:bg-violet-500/30 transition-colors"
+                    >
+                      + Add
+                    </button>
+                  </form>
+                  {/* Watchlist chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {watchlist.map(w => (
+                      <span key={w} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-semibold">
+                        {w}
+                        <button
+                          onClick={() => setWatchlist(prev => prev.filter(x => x !== w))}
+                          className="text-violet-500 hover:text-rose-400 transition-colors ml-0.5"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    {watchlist.length === 0 && (
+                      <span className="text-[10px] text-slate-600">No entries yet — add a client name above.</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* SEARCH BAR */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
@@ -903,8 +982,9 @@ function App() {
               const isPinned = pinnedSignals.some(p => p.id === item.id);
               const currentTag = signalTags[item.id];
               const urgency = getUrgencyScore(item);
+              const watchedBy = getWatchlistMatch(`${item.text} ${item.author} ${item.source}`, watchlist);
               return (
-                <div key={item.id} className={`animate-3d-slide group p-5 rounded-2xl border transition-all duration-300 ${ isPinned ? 'bg-indigo-500/[0.04] border-indigo-500/20' : urgency >= 8 ? 'bg-rose-500/[0.03] border-rose-500/10 hover:border-rose-500/20' : `${th.card} hover:border-slate-800 hover:bg-white/[0.04]`}`}>
+                <div key={item.id} className={`animate-3d-slide group p-5 rounded-2xl border transition-all duration-300 ${ isPinned ? 'bg-indigo-500/[0.04] border-indigo-500/20' : watchedBy ? 'bg-violet-500/[0.03] border-violet-500/20 hover:border-violet-500/30' : urgency >= 8 ? 'bg-rose-500/[0.03] border-rose-500/10 hover:border-rose-500/20' : `${th.card} hover:border-slate-800 hover:bg-white/[0.04]`}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 rounded-lg bg-black border border-white/10 shadow-sm">
@@ -963,6 +1043,7 @@ function App() {
                       <span className="text-xs font-bold text-slate-200">{item.author}</span>
                       <div className="flex items-center gap-1.5">
                         {currentTag && <SignalTagBadge tag={currentTag} />}
+                        {watchedBy && <WatchlistBadge match={watchedBy} />}
                         <UrgencyBadge score={urgency} />
                         <SentimentBadge text={item.text} />
                       </div>
