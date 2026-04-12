@@ -211,6 +211,181 @@ function SignalHeatmap({ stream }) {
   );
 }
 
+// ─── ANIMATED 3D BACKGROUND ─────────────────────────────────────────────────
+function AnimatedBackground() {
+  return (
+    <>
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <div className="orb orb-4" />
+      <div className="mesh-grid" />
+    </>
+  );
+}
+
+// ─── CARD 3D TILT WRAPPER COMPONENT ──────────────────────────────────────────────────────
+// Using a component (not a hook) to avoid calling hooks inside .map()
+function Card3D({ children, strength = 6, className = '' }) {
+  const ref = useRef(null);
+  const handleMouseMove = (e) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const dx = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
+    const dy = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
+    ref.current.style.transform =
+      `perspective(700px) rotateY(${dx * strength}deg) rotateX(${-dy * strength}deg) translateZ(6px) scale(1.01)`;
+  };
+  const handleMouseLeave = () => {
+    if (!ref.current) return;
+    ref.current.style.transform = 'perspective(700px) rotateY(0deg) rotateX(0deg) translateZ(0) scale(1)';
+  };
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`card-3d ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── FEATURE 13: SIGNAL RADAR ────────────────────────────────────────────────
+const RADAR_SOURCES = ['slack', 'email', 'jira', 'system'];
+const RADAR_COLORS  = { slack:'#ec4899', email:'#60a5fa', jira:'#818cf8', system:'#34d399' };
+
+function SignalRadar({ stream }) {
+  const SIZE = 120;
+  const C    = SIZE / 2; // centre
+  const R    = 38;       // max radius
+
+  const counts = useMemo(() => {
+    const totals = {};
+    RADAR_SOURCES.forEach(s => { totals[s] = stream.filter(x => x.type === s).length; });
+    return totals;
+  }, [stream]);
+
+  const urgencyBySource = useMemo(() => {
+    const scores = {};
+    RADAR_SOURCES.forEach(src => {
+      const items = stream.filter(x => x.type === src);
+      scores[src] = items.length ? items.reduce((a, x) => a + getUrgencyScore(x), 0) / items.length : 0;
+    });
+    return scores;
+  }, [stream]);
+
+  const maxCount = Math.max(...Object.values(counts), 1);
+
+  // Grid hex levels
+  const gridLevels = [0.33, 0.66, 1];
+
+  const axisPoints = (lvl) => RADAR_SOURCES.map((_, i) => {
+    const angle = (i / RADAR_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+    return { x: C + Math.cos(angle) * R * lvl, y: C + Math.sin(angle) * R * lvl };
+  });
+
+  const dataPoints = RADAR_SOURCES.map((src, i) => {
+    const angle = (i / RADAR_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+    const r = (counts[src] / maxCount) * R;
+    return { x: C + Math.cos(angle) * r, y: C + Math.sin(angle) * r, src };
+  });
+
+  const labelPoints = RADAR_SOURCES.map((src, i) => {
+    const angle = (i / RADAR_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+    return { x: C + Math.cos(angle) * (R + 13), y: C + Math.sin(angle) * (R + 13), src };
+  });
+
+  const sweepPath = RADAR_SOURCES.map((src, i) => {
+    const angle = (i / RADAR_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+    const r = (urgencyBySource[src] / 10) * R;
+    return `${C + Math.cos(angle) * r},${C + Math.sin(angle) * r}`;
+  }).join(' ');
+
+  const polygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  if (stream.length === 0) return (
+    <div className="flex items-center justify-center w-[120px] h-[120px]">
+      <span className="text-[9px] text-slate-700 font-mono uppercase tracking-widest">awaiting signals</span>
+    </div>
+  );
+
+  return (
+    <div className="relative" title="Signal Radar — source distribution &amp; urgency posture">
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} overflow="visible">
+        {/* --- grid rings --- */}
+        {gridLevels.map(lvl => (
+          <polygon
+            key={lvl}
+            points={axisPoints(lvl).map(p => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke="rgba(99,102,241,0.08)"
+            strokeWidth="1"
+          />
+        ))}
+        {/* --- axis lines --- */}
+        {RADAR_SOURCES.map((_, i) => {
+          const angle = (i / RADAR_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+          return (
+            <line
+              key={i}
+              x1={C} y1={C}
+              x2={C + Math.cos(angle) * R}
+              y2={C + Math.sin(angle) * R}
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        {/* --- urgency sweep (secondary polygon) --- */}
+        <polygon
+          points={sweepPath}
+          fill="rgba(244,63,94,0.07)"
+          stroke="rgba(244,63,94,0.25)"
+          strokeWidth="1"
+          strokeDasharray="4 2"
+          className="radar-pulse"
+        />
+        {/* --- data polygon --- */}
+        <polygon
+          points={polygon}
+          fill="rgba(99,102,241,0.18)"
+          stroke="rgba(99,102,241,0.7)"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        {/* --- data dots --- */}
+        {dataPoints.map(p => (
+          <circle key={p.src} cx={p.x} cy={p.y} r="3" fill={RADAR_COLORS[p.src]} opacity="0.9">
+            <animate attributeName="r" values="3;3.8;3" dur="2s" repeatCount="indefinite" />
+          </circle>
+        ))}
+        {/* --- labels --- */}
+        {labelPoints.map(p => (
+          <text
+            key={p.src}
+            x={p.x} y={p.y}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5.5"
+            fontFamily="'Inter', monospace"
+            fontWeight="600"
+            fill={RADAR_COLORS[p.src]}
+            opacity="0.8"
+          >
+            {p.src}
+          </text>
+        ))}
+        {/* --- centre dot --- */}
+        <circle cx={C} cy={C} r="2" fill="rgba(99,102,241,0.5)" />
+      </svg>
+      {/* legend */}
+      <p className="text-[8px] font-mono text-slate-600 text-center mt-0.5 uppercase tracking-widest">Signal Radar</p>
+    </div>
+  );
+}
+
 // ─── FEATURE 12: SIGNAL ANNOTATIONS ────────────────────────────────────────
 function SignalNoteEditor({ itemId, notes, onSave, onClose }) {
   const [draft, setDraft] = useState(notes[itemId] || '');
@@ -868,7 +1043,8 @@ function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-      <div className={`flex h-screen ${th.bg} ${th.text} font-sans selection:bg-indigo-500/30`}>
+      <div className={`flex h-screen ${th.bg} ${th.text} font-sans selection:bg-indigo-500/30 relative overflow-hidden`}>
+        <AnimatedBackground />
         <AlertToast toasts={alertToasts} onDismiss={dismissToast} />
 
         <CommandPalette
@@ -897,25 +1073,31 @@ function App() {
           ))}
         </div>
 
-        <div className="absolute top-0 w-full h-[2px] bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 z-50 pointer-events-none"></div>
+        <div className="absolute top-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent z-50 pointer-events-none" />
 
         {/* LEFT PANEL */}
-        <div className={`border-r ${th.border} flex flex-col ${th.panelL} relative z-10 transition-all duration-500 ease-in-out overflow-hidden ${ focusMode ? 'w-0 min-w-0 opacity-0' : 'w-1/2 opacity-100' }`}>
-          <div className={`px-8 py-6 border-b ${th.border} flex flex-col gap-4 ${th.panelL} z-20`}>
+        <div className={`flex flex-col glass-panel-l relative z-10 transition-all duration-500 ease-in-out overflow-hidden ${ focusMode ? 'w-0 min-w-0 opacity-0' : 'w-1/2 opacity-100' }`}>
+          <div className={`px-8 py-5 flex flex-col gap-4 glass-header z-20`}>
             <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
-                  <Activity className="w-4 h-4 text-indigo-400" />
-                  Signal Stream
-                </h2>
-                <p className={`text-xs ${th.muted} mt-1.5 tracking-wide`}>Intercepting integration events & communications</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-white flex items-center gap-2 tracking-wide uppercase">
+                    <Activity className="w-4 h-4 text-indigo-400" />
+                    <span className="gradient-text-indigo">Signal Stream</span>
+                  </h2>
+                  <p className={`text-xs ${th.muted} mt-1 tracking-wide`}>Intercepting integration events &amp; communications</p>
+                </div>
+                {/* Feature 13: Signal Radar */}
+                <div className="hidden lg:block shrink-0">
+                  <SignalRadar stream={stream} />
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {/* Feature 1: Live Ticker */}
                 <LiveTicker count={totalSignals} critical={criticalSignals} />
 
                 {/* Feature 5: Heatmap inline */}
-                <div className="w-20 hidden sm:block">
+                <div className="w-16 hidden sm:block">
                   <SignalHeatmap stream={stream} />
                 </div>
 
@@ -1129,7 +1311,7 @@ function App() {
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-4 scroll-smooth pb-32">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-3 scroll-smooth pb-32">
 
             {/* PINNED SIGNALS SECTION — Feature 8: Drag to reorder */}
             {pinnedSignals.length > 0 && (
@@ -1209,8 +1391,14 @@ function App() {
               const currentTag = signalTags[item.id];
               const urgency = getUrgencyScore(item);
               const watchedBy = getWatchlistMatch(`${item.text} ${item.author} ${item.source}`, watchlist);
+              const cardClass = `animate-3d-slide group p-5 rounded-2xl border relative overflow-hidden transition-all duration-200 depth-shadow ${
+                isPinned   ? 'bg-indigo-500/[0.05] border-indigo-500/25'
+              : watchedBy  ? 'bg-violet-500/[0.04] border-violet-500/20'
+              : urgency >= 8 ? 'bg-rose-500/[0.04] border-rose-500/15 glow-rose'
+              : 'glass-card'
+              }`;
               return (
-                <div key={item.id} className={`animate-3d-slide group p-5 rounded-2xl border transition-all duration-300 ${ isPinned ? 'bg-indigo-500/[0.04] border-indigo-500/20' : watchedBy ? 'bg-violet-500/[0.03] border-violet-500/20 hover:border-violet-500/30' : urgency >= 8 ? 'bg-rose-500/[0.03] border-rose-500/10 hover:border-rose-500/20' : `${th.card} hover:border-slate-800 hover:bg-white/[0.04]`}`}>
+                <Card3D key={item.id} strength={urgency >= 8 ? 4 : 6} className={cardClass}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 rounded-lg bg-black border border-white/10 shadow-sm">
@@ -1313,19 +1501,19 @@ function App() {
                       />
                     )}
                   </div>
-                </div>
+                </Card3D>
               );
             })}
           </div>
         </div>
 
         {/* RIGHT PANEL - Digest */}
-        <div className={`flex flex-col relative overflow-y-auto ${th.panelR} scroll-smooth transition-all duration-500 ease-in-out ${ focusMode ? 'w-full' : 'w-1/2' }`}>
+        <div className={`flex flex-col relative overflow-y-auto glass-panel-r scroll-smooth transition-all duration-500 ease-in-out ${ focusMode ? 'w-full' : 'w-1/2' }`}>
           <div className="p-12 flex-1 flex flex-col max-w-3xl mx-auto w-full relative z-10">
 
             <div className="mb-10 mt-8 flex justify-between items-start flex-wrap gap-4">
               <div>
-                <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">Briefly</h1>
+                <h1 className="text-3xl font-bold mb-2 tracking-tight gradient-text-indigo">Briefly</h1>
                 <p className="text-slate-400 text-sm tracking-wide font-light">
                   Synthesizing noise into decisive operational intelligence.
                 </p>
