@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -211,6 +211,150 @@ function SignalHeatmap({ stream }) {
   );
 }
 
+// ─── FEATURE 11: SIGNAL VELOCITY TIMELINE ────────────────────────────────────
+const SOURCE_COLORS = {
+  slack:  { bar: '#ec4899', bg: 'rgba(236,72,153,0.15)', label: 'text-pink-400' },
+  email:  { bar: '#60a5fa', bg: 'rgba(96,165,250,0.15)',  label: 'text-blue-400' },
+  jira:   { bar: '#3b82f6', bg: 'rgba(59,130,246,0.15)',  label: 'text-blue-500' },
+  system: { bar: '#34d399', bg: 'rgba(52,211,153,0.15)',  label: 'text-emerald-400' },
+};
+
+function SignalVelocityTimeline({ stream, open, onToggle, mutedSources }) {
+  // Bucket signals into 30-second slots (max 12 buckets = last 6 minutes)
+  const BUCKET_MS = 30_000;
+  const NUM_BUCKETS = 12;
+
+  const buckets = useMemo(() => {
+    const now = Date.now();
+    const slots = Array.from({ length: NUM_BUCKETS }, (_, i) => ({
+      start: now - (NUM_BUCKETS - i) * BUCKET_MS,
+      end:   now - (NUM_BUCKETS - i - 1) * BUCKET_MS,
+      by: { slack: 0, email: 0, jira: 0, system: 0 },
+      total: 0,
+    }));
+    // Since stream items have a human-readable .time string (not full timestamp),
+    // we distribute by insertion order as a proxy for recency
+    const recencyFraction = stream.length > 0
+      ? stream.map((_, i) => i / stream.length)
+      : [];
+    stream.forEach((item, i) => {
+      const fraction = recencyFraction[i];
+      const bucketIdx = Math.min(Math.floor(fraction * NUM_BUCKETS), NUM_BUCKETS - 1);
+      if (slots[bucketIdx] && SOURCE_COLORS[item.type]) {
+        slots[bucketIdx].by[item.type] = (slots[bucketIdx].by[item.type] || 0) + 1;
+        slots[bucketIdx].total++;
+      }
+    });
+    return slots;
+  }, [stream]);
+
+  const maxTotal = Math.max(...buckets.map(b => b.total), 1);
+  const lastBucket = buckets[NUM_BUCKETS - 1];
+  const prevBucket = buckets[NUM_BUCKETS - 2];
+  const isSurging = lastBucket.total > 0 && lastBucket.total >= prevBucket.total * 1.5 && lastBucket.total >= 2;
+  const isCooling = lastBucket.total === 0 && prevBucket.total > 0;
+  const totalRecentCritical = stream.filter(s => getSentiment(s.text) === 'critical').length;
+
+  const velocityLabel = isSurging
+    ? `⚡ Surge detected — ${lastBucket.total} signals in last 30s`
+    : isCooling
+    ? '✓ Signal tempo cooling'
+    : `${stream.length} signals captured`;
+
+  const velocityColor = isSurging ? 'text-rose-400' : isCooling ? 'text-emerald-400' : 'text-slate-500';
+
+  return (
+    <div className={`rounded-xl border overflow-hidden transition-all ${
+      open ? 'border-indigo-500/20 bg-indigo-500/[0.02]' : 'border-white/[0.05]'
+    }`}>
+      {/* Header */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.03] transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Radio className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Velocity Timeline</span>
+          {isSurging && (
+            <span className="px-1.5 py-0 rounded bg-rose-500/20 text-rose-300 font-mono text-[9px] border border-rose-500/20 animate-pulse">SURGE</span>
+          )}
+        </span>
+        {open ? <ChevronUp className="w-3 h-3 text-indigo-400/60" /> : <ChevronDown className="w-3 h-3 text-slate-600" />}
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          {/* Velocity label */}
+          <p className={`text-[9px] font-mono font-bold tracking-widest uppercase ${velocityColor}`}>
+            {velocityLabel}
+          </p>
+
+          {/* Stacked bar chart */}
+          <div className="flex items-end gap-px h-12" title="Signal velocity over time (30s buckets)">
+            {buckets.map((bucket, i) => {
+              const heightPct = maxTotal > 0 ? (bucket.total / maxTotal) * 100 : 0;
+              const isLatest = i === NUM_BUCKETS - 1;
+              return (
+                <div
+                  key={i}
+                  className={`relative flex-1 flex flex-col-reverse rounded-sm overflow-hidden transition-all duration-700 ${
+                    isLatest ? 'ring-1 ring-indigo-500/30' : ''
+                  }`}
+                  style={{ height: `${Math.max(4, heightPct)}%`, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                  title={`${bucket.total} signal${bucket.total !== 1 ? 's' : ''}`}
+                >
+                  {Object.entries(bucket.by).map(([src, cnt]) => {
+                    if (!cnt || mutedSources?.has(src)) return null;
+                    const frac = cnt / Math.max(bucket.total, 1);
+                    return (
+                      <div
+                        key={src}
+                        style={{
+                          height: `${frac * 100}%`,
+                          backgroundColor: SOURCE_COLORS[src]?.bar || '#6366f1',
+                          opacity: isLatest ? 1 : 0.55,
+                        }}
+                        className="transition-all duration-500"
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* X-axis labels */}
+          <div className="flex justify-between">
+            <span className="text-[8px] text-slate-700 font-mono">−6m</span>
+            <span className="text-[8px] text-slate-700 font-mono">−3m</span>
+            <span className="text-[8px] text-indigo-500 font-mono font-bold">now</span>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-white/[0.04]">
+            {Object.entries(SOURCE_COLORS).map(([src, cfg]) => {
+              const cnt = stream.filter(s => s.type === src).length;
+              const isMuted = mutedSources?.has(src);
+              return (
+                <span key={src} className={`flex items-center gap-1 text-[9px] font-mono ${isMuted ? 'opacity-30' : ''} ${cfg.label}`}>
+                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: cfg.bar }} />
+                  {src} <span className="text-slate-600">({cnt})</span>
+                </span>
+              );
+            })}
+            {totalRecentCritical > 0 && (
+              <span className="ml-auto text-[9px] font-bold text-rose-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                {totalRecentCritical} critical
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── FEATURE 8: DIGEST CONFIDENCE SCORE ──────────────────────────────────────
 function DigestConfidenceScore({ digest }) {
   if (!digest) return null;
@@ -315,7 +459,7 @@ function AutoRefreshCountdown({ onRefresh, isGenerating, digest }) {
 }
 
 // ─── COMMAND PALETTE ─────────────────────────────────────────────────────────
-function CommandPalette({ open, onClose, stream, onGenerate, onTogglePause, isPaused, onToggleFocus, onToggleTheme, theme, onFilterSource, onExport, digest }) {
+function CommandPalette({ open, onClose, stream, onGenerate, onTogglePause, isPaused, onToggleFocus, onToggleTheme, theme, onFilterSource, onExport, digest, onToggleVelocity }) {
   const inputRef = useRef(null);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -324,6 +468,7 @@ function CommandPalette({ open, onClose, stream, onGenerate, onTogglePause, isPa
     { id: 'generate',     icon: <Sparkles className="w-3.5 h-3.5 text-indigo-400" />,         label: 'Generate Intelligence Digest',        group: 'Actions',  action: () => { onGenerate(); onClose(); } },
     { id: 'pause',        icon: isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />, label: isPaused ? 'Resume Signal Stream' : 'Pause Signal Stream', group: 'Actions', action: () => { onTogglePause(); onClose(); } },
     { id: 'focus',        icon: <Maximize2 className="w-3.5 h-3.5 text-slate-400" />,         label: 'Toggle Focus Mode',                   group: 'Actions',  action: () => { onToggleFocus(); onClose(); } },
+    { id: 'velocity',     icon: <Radio className="w-3.5 h-3.5 text-indigo-400" />,             label: 'Toggle Velocity Timeline',            group: 'Actions',  action: () => { onToggleVelocity(); onClose(); } },
     { id: 'theme',        icon: theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />, label: `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Theme`, group: 'Actions', action: () => { onToggleTheme(); onClose(); } },
     { id: 'export',       icon: <Download className="w-3.5 h-3.5 text-slate-400" />,          label: 'Export Digest as Markdown',           group: 'Actions',  action: () => { onExport(); onClose(); } },
     { id: 'filter-all',   icon: <Filter className="w-3.5 h-3.5 text-slate-400" />,            label: 'Filter: Show All Sources',            group: 'Filters',  action: () => { onFilterSource('all'); onClose(); } },
@@ -488,6 +633,9 @@ function App() {
   // Urgency Priority Sort
   const [prioritySort, setPrioritySort] = useState(false);
 
+  // Feature 11: Velocity Timeline
+  const [velocityOpen, setVelocityOpen] = useState(true);
+
   // Client Watchlist
   const [watchlist, setWatchlist] = useState(['PharmaTech', 'GlobalBank', 'Acme']);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
@@ -636,6 +784,7 @@ function App() {
       if (e.key === 'g' || e.key === 'G') { if (!digest && stream.length > 0 && !isGenerating) handleGenerateHeartbeat(); }
       if (e.key === 'f' || e.key === 'F') { setFocusMode(f => !f); }
       if (e.key === 't' || e.key === 'T') { setTheme(th => th === 'dark' ? 'light' : 'dark'); }
+      if (e.key === 'v' || e.key === 'V') { setVelocityOpen(v => !v); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(p => !p); return; }
       if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); }
     };
@@ -673,11 +822,12 @@ function App() {
           onFilterSource={setFilterSource}
           onExport={handleExportMarkdown}
           digest={digest}
+          onToggleVelocity={() => setVelocityOpen(v => !v)}
         />
 
         {/* KEYBOARD SHORTCUT LEGEND */}
         <div className="fixed bottom-5 left-5 z-50 flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/[0.06] backdrop-blur pointer-events-none">
-          {[['Space','Pause'],['G','Generate'],['F','Focus'],['T','Theme'],['Ctrl+K','Palette'],['Esc','Clear']].map(([key, label]) => (
+          {[['Space','Pause'],['G','Generate'],['F','Focus'],['V','Velocity'],['T','Theme'],['Ctrl+K','Palette'],['Esc','Clear']].map(([key, label]) => (
             <span key={key} className="flex items-center gap-1.5">
               <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
               <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
@@ -826,6 +976,14 @@ function App() {
                 </span>
               )}
             </div>
+
+            {/* FEATURE 11: VELOCITY TIMELINE */}
+            <SignalVelocityTimeline
+              stream={stream}
+              open={velocityOpen}
+              onToggle={() => setVelocityOpen(v => !v)}
+              mutedSources={mutedSources}
+            />
 
             {/* CLIENT WATCHLIST */}
             <div className={`rounded-xl border overflow-hidden transition-all ${watchlistOpen ? 'border-violet-500/20 bg-violet-500/[0.03]' : 'border-white/[0.05] bg-transparent'}`}>
