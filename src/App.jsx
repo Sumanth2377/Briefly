@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio, Pencil, StickyNote } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -207,6 +207,55 @@ function SignalHeatmap({ stream }) {
           title={`${b.count} signals`}
         />
       ))}
+    </div>
+  );
+}
+
+// ─── FEATURE 12: SIGNAL ANNOTATIONS ────────────────────────────────────────
+function SignalNoteEditor({ itemId, notes, onSave, onClose }) {
+  const [draft, setDraft] = useState(notes[itemId] || '');
+  const taRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => taRef.current?.focus(), 30); }, []);
+
+  const handleKey = (e) => {
+    if (e.key === 'Escape') { onClose(); }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { onSave(itemId, draft); onClose(); }
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.04] overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-amber-500/15">
+        <StickyNote className="w-3 h-3 text-amber-400" />
+        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400">Private Note</span>
+        <span className="ml-auto text-[9px] text-slate-600 font-mono">Ctrl+↵ save · Esc cancel</span>
+      </div>
+      <textarea
+        ref={taRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onKeyDown={handleKey}
+        placeholder="Add context, next steps, or observations…"
+        rows={2}
+        className="w-full bg-transparent px-3 py-2 text-xs text-amber-100/80 placeholder-amber-900/60 resize-none focus:outline-none leading-relaxed"
+      />
+      <div className="flex items-center gap-2 px-3 py-1.5 border-t border-amber-500/15">
+        <button
+          onClick={() => { onSave(itemId, draft); onClose(); }}
+          className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/20 hover:bg-amber-500/30 transition-colors"
+        >
+          <Check className="w-2.5 h-2.5" /> Save
+        </button>
+        {notes[itemId] && (
+          <button
+            onClick={() => { onSave(itemId, ''); onClose(); }}
+            className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded text-slate-500 hover:text-rose-400 transition-colors"
+          >
+            <X className="w-2.5 h-2.5" /> Clear
+          </button>
+        )}
+        <button onClick={onClose} className="ml-auto text-[9px] text-slate-600 hover:text-slate-300 transition-colors">Cancel</button>
+      </div>
     </div>
   );
 }
@@ -636,6 +685,19 @@ function App() {
   // Feature 11: Velocity Timeline
   const [velocityOpen, setVelocityOpen] = useState(true);
 
+  // Feature 12: Signal Annotations
+  const [signalNotes, setSignalNotes] = useState({});
+  const [activeNoteId, setActiveNoteId] = useState(null);
+
+  const saveNote = useCallback((id, text) => {
+    setSignalNotes(prev => {
+      const next = { ...prev };
+      if (text.trim()) next[id] = text.trim();
+      else delete next[id];
+      return next;
+    });
+  }, []);
+
   // Client Watchlist
   const [watchlist, setWatchlist] = useState(['PharmaTech', 'GlobalBank', 'Acme']);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
@@ -786,7 +848,7 @@ function App() {
       if (e.key === 't' || e.key === 'T') { setTheme(th => th === 'dark' ? 'light' : 'dark'); }
       if (e.key === 'v' || e.key === 'V') { setVelocityOpen(v => !v); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(p => !p); return; }
-      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); }
+      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); setActiveNoteId(null); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -1098,6 +1160,12 @@ function App() {
                           <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{p.source} · {p.author}</span>
                           <p className="text-xs text-slate-300 leading-relaxed font-light truncate">{p.text}</p>
                           {signalTags[p.id] && <div className="mt-1"><SignalTagBadge tag={signalTags[p.id]} /></div>}
+                          {signalNotes[p.id] && (
+                            <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1 rounded bg-amber-500/[0.06] border border-amber-500/15">
+                              <StickyNote className="w-2.5 h-2.5 text-amber-500/60 mt-0.5 shrink-0" />
+                              <p className="text-[10px] text-amber-200/60 italic leading-snug">{signalNotes[p.id]}</p>
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => togglePin(p)} className="mt-0.5 shrink-0 p-1 rounded hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 transition-colors">
                           <X className="w-3 h-3" />
@@ -1151,6 +1219,19 @@ function App() {
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{item.source}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Feature 12: Annotate button */}
+                      <button
+                        onClick={() => setActiveNoteId(activeNoteId === item.id ? null : item.id)}
+                        title="Add private note"
+                        className={`transition-all p-1 rounded ${
+                          signalNotes[item.id]
+                            ? 'text-amber-400 opacity-100 hover:bg-amber-500/10'
+                            : 'opacity-0 group-hover:opacity-100 text-slate-600 hover:bg-white/10 hover:text-amber-300'
+                        }`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
                       {/* Feature 3: Tag button */}
                       <div className="relative">
                         <button
@@ -1202,6 +1283,11 @@ function App() {
                       <div className="flex items-center gap-1.5">
                         {currentTag && <SignalTagBadge tag={currentTag} />}
                         {watchedBy && <WatchlistBadge match={watchedBy} />}
+                        {signalNotes[item.id] && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <StickyNote className="w-2.5 h-2.5" /> Annotated
+                          </span>
+                        )}
                         <UrgencyBadge score={urgency} />
                         <SentimentBadge text={item.text} />
                       </div>
@@ -1210,6 +1296,22 @@ function App() {
                       text={item.text}
                       baseClass={`text-sm leading-relaxed font-light ${item.type === 'system' ? 'text-amber-200/90 font-medium' : 'text-slate-400'}`}
                     />
+                    {/* Feature 12: Inline note display */}
+                    {signalNotes[item.id] && activeNoteId !== item.id && (
+                      <div className="flex items-start gap-2 mt-2 px-2.5 py-1.5 rounded-md bg-amber-500/[0.06] border border-amber-500/15">
+                        <StickyNote className="w-3 h-3 text-amber-500/60 mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-amber-200/70 leading-relaxed font-light italic">{signalNotes[item.id]}</p>
+                      </div>
+                    )}
+                    {/* Feature 12: Note editor */}
+                    {activeNoteId === item.id && (
+                      <SignalNoteEditor
+                        itemId={item.id}
+                        notes={signalNotes}
+                        onSave={saveNote}
+                        onClose={() => setActiveNoteId(null)}
+                      />
+                    )}
                   </div>
                 </div>
               );
