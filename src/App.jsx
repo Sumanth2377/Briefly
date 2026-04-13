@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio, Pencil, StickyNote } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio, Pencil, StickyNote, CornerDownLeft, SendHorizonal } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -816,6 +816,166 @@ function CommandPalette({ open, onClose, stream, onGenerate, onTogglePause, isPa
   );
 }
 
+// ─── FEATURE 14: QUICK REPLY DRAFT GENERATOR ─────────────────────────────────
+function generateDraft(item, urgency) {
+  const isEmailLike = item.type === 'email';
+  const isSlack     = item.type === 'slack';
+  const isSystem    = item.type === 'system';
+  const sentiment   = getSentiment(item.text);
+  const isUrgent    = urgency >= 7;
+
+  if (isEmailLike) {
+    return (
+      `Subject: Re: ${item.source} — ${isUrgent ? 'Urgent Follow-Up' : 'Acknowledgement'}\n\n` +
+      `Hi ${item.author.split(' ')[0]},\n\n` +
+      (isUrgent
+        ? `I've been flagged on this issue and I'm treating it as a priority. I'd like to connect in the next 30 minutes to align on next steps.\n\n` +
+          `Quick context from my end:\n• This has been escalated to the delivery team\n• We're targeting a resolution by EOD\n\nPlease confirm your availability.`
+        : `Thanks for the update. I've noted the status and will follow up with the team to ensure this stays on track.\n\nI'll share a progress update within 2 hours.`
+      ) +
+      `\n\nBest,\n[Your Name]`
+    );
+  }
+
+  if (isSlack) {
+    return (
+      isUrgent
+        ? `👋 @${item.author.split(' ')[0]} — picking this up now. Looping in the team. Can we jump on a quick call?\n\n` +
+          `Flagged for immediate attention: _${item.text.slice(0, 80)}${item.text.length > 80 ? '…' : ''}_\n\n` +
+          `:red_circle: Priority: **High** | :clock2: Target: EOD`
+        : `Got it, thanks for the heads-up. I'll track this and update by EOD.\n\ncc: @team-leads`
+    );
+  }
+
+  if (isSystem) {
+    return (
+      `[INCIDENT RESPONSE LOG]\n` +
+      `Time: ${item.time}\n` +
+      `Source: ${item.source}\n` +
+      `Severity: ${isUrgent ? 'HIGH' : 'MEDIUM'}\n\n` +
+      `Summary: ${item.text}\n\n` +
+      `Immediate Actions:\n` +
+      `1. Notify engineering on-call\n` +
+      `2. Assess client impact scope\n` +
+      `3. Set ETA and communicate to stakeholders\n\n` +
+      `Owner: [Assign]\nETA: [Set]`
+    );
+  }
+
+  // Jira / default
+  return (
+    `Re: ${item.source} — Ticket Update\n\n` +
+    `Hi team,\n\n` +
+    `I've reviewed the latest update from ${item.author}. ` +
+    (sentiment === 'critical'
+      ? `This looks like a blocker — requesting immediate triage.`
+      : `Looks like we're making progress. Keep the momentum going.`) +
+    `\n\nPlease update the ticket status and flag any risks by EOD.\n\nThanks`
+  );
+}
+
+function QuickReplyModal({ item, urgency, onClose }) {
+  const [draft, setDraft] = useState(() => generateDraft(item, urgency));
+  const [copied, setCopied] = useState(false);
+  const isUrgent = urgency >= 7;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(draft);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const typeLabel = { email: 'Email Draft', slack: 'Slack Message', system: 'Incident Log', jira: 'Jira Reply' }[item.type] || 'Draft';
+  const typeColor = { email: 'text-blue-400 border-blue-500/20 bg-blue-500/10', slack: 'text-pink-400 border-pink-500/20 bg-pink-500/10', system: 'text-amber-400 border-amber-500/20 bg-amber-500/10', jira: 'text-indigo-400 border-indigo-500/20 bg-indigo-500/10' }[item.type] || 'text-slate-400 border-white/10 bg-white/5';
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg mx-4 rounded-2xl bg-slate-900 border border-white/10 shadow-2xl shadow-black/70 overflow-hidden flex flex-col"
+        style={{ maxHeight: '85vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
+          <div className="p-1.5 rounded-md bg-white/5 border border-white/10">
+            <CornerDownLeft className="w-3.5 h-3.5 text-indigo-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white tracking-wide">Quick Reply Draft</p>
+            <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">{item.source} · {item.author}</p>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${typeColor}`}>
+            {getSourceIcon(item.type)}
+            {typeLabel}
+          </span>
+          {isUrgent && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
+              🔥 Urgent
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-white transition-colors ml-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Context strip */}
+        <div className="px-5 py-2.5 bg-white/[0.015] border-b border-white/[0.04]">
+          <p className="text-[11px] text-slate-500 font-light leading-snug line-clamp-2">
+            <span className="text-slate-400 font-semibold">Signal: </span>{item.text}
+          </p>
+        </div>
+
+        {/* Draft textarea */}
+        <div className="flex-1 overflow-hidden p-4">
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={10}
+            className="w-full h-full min-h-[180px] bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-xs text-slate-200 placeholder-slate-600 font-mono leading-relaxed resize-none focus:outline-none focus:border-indigo-500/40 focus:bg-white/[0.05] transition-all"
+            placeholder="Draft will appear here…"
+          />
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex items-center gap-2 px-5 py-3.5 border-t border-white/[0.06] bg-black/20">
+          <span className="text-[9px] text-slate-600 font-mono tracking-widest uppercase">Edit before sending · Esc to close</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md text-slate-500 hover:text-slate-200 border border-white/[0.06] hover:bg-white/5 transition-colors"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={handleCopy}
+              className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md border transition-all ${
+                copied
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/30'
+              }`}
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copied ? 'Copied!' : 'Copy Draft'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
   const [stream, setStream] = useState([]);
@@ -863,6 +1023,9 @@ function App() {
   // Feature 12: Signal Annotations
   const [signalNotes, setSignalNotes] = useState({});
   const [activeNoteId, setActiveNoteId] = useState(null);
+
+  // Feature 14: Quick Reply Drafts
+  const [replySignal, setReplySignal] = useState(null);
 
   const saveNote = useCallback((id, text) => {
     setSignalNotes(prev => {
@@ -1047,6 +1210,15 @@ function App() {
         <AnimatedBackground />
         <AlertToast toasts={alertToasts} onDismiss={dismissToast} />
 
+        {/* Feature 14: Quick Reply Modal */}
+        {replySignal && (
+          <QuickReplyModal
+            item={replySignal}
+            urgency={getUrgencyScore(replySignal)}
+            onClose={() => setReplySignal(null)}
+          />
+        )}
+
         <CommandPalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
@@ -1065,7 +1237,7 @@ function App() {
 
         {/* KEYBOARD SHORTCUT LEGEND */}
         <div className="fixed bottom-5 left-5 z-50 flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/[0.06] backdrop-blur pointer-events-none">
-          {[['Space','Pause'],['G','Generate'],['F','Focus'],['V','Velocity'],['T','Theme'],['Ctrl+K','Palette'],['Esc','Clear']].map(([key, label]) => (
+          {[['Space','Pause'],['G','Generate'],['F','Focus'],['V','Velocity'],['T','Theme'],['Ctrl+K','Palette'],['R','Reply'],['Esc','Clear']].map(([key, label]) => (
             <span key={key} className="flex items-center gap-1.5">
               <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
               <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
@@ -1407,6 +1579,20 @@ function App() {
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{item.source}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Feature 14: Quick Reply button */}
+                      <button
+                        onClick={() => setReplySignal(item)}
+                        title="Draft a reply (R)"
+                        className={`transition-all p-1 rounded flex items-center gap-1 ${
+                          urgency >= 7
+                            ? 'text-indigo-400 opacity-80 hover:opacity-100 hover:bg-indigo-500/15 border border-indigo-500/20'
+                            : 'opacity-0 group-hover:opacity-100 text-slate-600 hover:bg-white/10 hover:text-indigo-300'
+                        }`}
+                      >
+                        <CornerDownLeft className="w-3.5 h-3.5" />
+                        {urgency >= 7 && <span className="text-[9px] font-bold uppercase tracking-widest">Reply</span>}
+                      </button>
+
                       {/* Feature 12: Annotate button */}
                       <button
                         onClick={() => setActiveNoteId(activeNoteId === item.id ? null : item.id)}
