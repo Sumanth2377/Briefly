@@ -976,6 +976,140 @@ function QuickReplyModal({ item, urgency, onClose }) {
   );
 }
 
+// ─── FEATURE 15: LIVE ORG RISK GAUGE ─────────────────────────────────────────
+function OrgRiskGauge({ stream, watchlist, digest }) {
+  const score = useMemo(() => {
+    if (!stream.length) return 0;
+    // Factor 1: critical signal ratio (0-40 pts)
+    const critRatio = stream.filter(s => getSentiment(s.text) === 'critical').length / stream.length;
+    const critScore = Math.round(critRatio * 40);
+    // Factor 2: average urgency (0-30 pts)
+    const avgUrgency = stream.reduce((a, s) => a + getUrgencyScore(s), 0) / stream.length;
+    const urgScore = Math.round(((avgUrgency - 1) / 9) * 30);
+    // Factor 3: watchlist hit rate (0-20 pts)
+    const watchHits = stream.filter(s =>
+      watchlist.some(w => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(w.toLowerCase()))
+    ).length;
+    const watchScore = Math.round(Math.min(watchHits / Math.max(stream.length, 1), 1) * 20);
+    // Factor 4: low confidence penalty from digest (0-10 pts)
+    let confPenalty = 0;
+    if (digest) {
+      const lowConf = digest.focus.filter(f => f.confidence === 'Low' || f.confidence === 'Medium').length;
+      confPenalty = Math.round((lowConf / Math.max(digest.focus.length, 1)) * 10);
+    }
+    return Math.min(100, critScore + urgScore + watchScore + confPenalty);
+  }, [stream, watchlist, digest]);
+
+  const prevScore = useRef(score);
+  const [displayScore, setDisplayScore] = useState(score);
+  const [trending, setTrending] = useState('stable'); // 'up' | 'down' | 'stable'
+
+  useEffect(() => {
+    if (score > prevScore.current) setTrending('up');
+    else if (score < prevScore.current) setTrending('down');
+    else setTrending('stable');
+    prevScore.current = score;
+
+    // Animate display score
+    const start = displayScore;
+    const diff = score - start;
+    if (Math.abs(diff) < 1) { setDisplayScore(score); return; }
+    let frame = 0;
+    const FRAMES = 20;
+    const id = setInterval(() => {
+      frame++;
+      setDisplayScore(Math.round(start + diff * (frame / FRAMES)));
+      if (frame >= FRAMES) clearInterval(id);
+    }, 30);
+    return () => clearInterval(id);
+  }, [score]);
+
+  // SVG ring params
+  const SIZE = 96;
+  const R = 38;
+  const C = SIZE / 2;
+  const CIRC = 2 * Math.PI * R;
+  const dashOffset = CIRC * (1 - displayScore / 100);
+
+  const riskLevel  = displayScore >= 70 ? 'critical' : displayScore >= 40 ? 'elevated' : 'nominal';
+  const ringColor  = riskLevel === 'critical' ? '#f43f5e' : riskLevel === 'elevated' ? '#f59e0b' : '#10b981';
+  const glowColor  = riskLevel === 'critical' ? 'rgba(244,63,94,0.25)' : riskLevel === 'elevated' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.15)';
+  const labelColor = riskLevel === 'critical' ? 'text-rose-400' : riskLevel === 'elevated' ? 'text-amber-400' : 'text-emerald-400';
+  const bgColor    = riskLevel === 'critical' ? 'bg-rose-500/[0.04] border-rose-500/20' : riskLevel === 'elevated' ? 'bg-amber-500/[0.03] border-amber-500/15' : 'bg-emerald-500/[0.03] border-emerald-500/10';
+
+  const trendIcon = trending === 'up' ? '↑' : trending === 'down' ? '↓' : '–';
+  const trendColor = trending === 'up' ? 'text-rose-400' : trending === 'down' ? 'text-emerald-400' : 'text-slate-500';
+
+  const subMetrics = [
+    { label: 'Crit %', value: `${stream.length ? Math.round(stream.filter(s => getSentiment(s.text) === 'critical').length / stream.length * 100) : 0}%`, color: 'text-rose-400' },
+    { label: 'Avg Urg', value: stream.length ? (stream.reduce((a, s) => a + getUrgencyScore(s), 0) / stream.length).toFixed(1) : '—', color: 'text-amber-400' },
+    { label: 'Watch', value: stream.filter(s => watchlist.some(w => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(w.toLowerCase()))).length, color: 'text-violet-400' },
+    { label: 'Signals', value: stream.length, color: 'text-indigo-400' },
+  ];
+
+  return (
+    <div className={`rounded-2xl border p-4 mb-6 ${bgColor} transition-all duration-700`}
+      style={{ boxShadow: `0 0 40px 0 ${glowColor}` }}
+    >
+      <div className="flex items-center gap-5">
+        {/* Ring meter */}
+        <div className="relative shrink-0">
+          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+            {/* Track */}
+            <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="7" />
+            {/* Filled arc */}
+            <circle
+              cx={C} cy={C} r={R}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth="7"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              strokeDashoffset={dashOffset}
+              transform={`rotate(-90 ${C} ${C})`}
+              style={{ transition: 'stroke-dashoffset 0.6s ease, stroke 0.6s ease', filter: `drop-shadow(0 0 6px ${ringColor}88)` }}
+              className={riskLevel === 'critical' ? 'risk-ring-pulse' : ''}
+            />
+            {/* Centre score */}
+            <text x={C} y={C - 4} textAnchor="middle" dominantBaseline="middle"
+              fontSize="18" fontWeight="800" fontFamily="'Inter', monospace" fill={ringColor}
+            >{displayScore}</text>
+            <text x={C} y={C + 10} textAnchor="middle" dominantBaseline="middle"
+              fontSize="6" fontWeight="600" fontFamily="'Inter', monospace" fill="rgba(255,255,255,0.3)" letterSpacing="1"
+            >RISK</text>
+          </svg>
+        </div>
+
+        {/* Right side */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-xs font-bold uppercase tracking-widest ${labelColor}`}>
+              {riskLevel === 'critical' ? 'Critical Risk' : riskLevel === 'elevated' ? 'Elevated Risk' : 'Nominal'}
+            </span>
+            <span className={`text-[10px] font-bold font-mono ${trendColor}`}>{trendIcon}</span>
+          </div>
+          <p className="text-[10px] text-slate-500 font-light leading-snug mb-3">
+            {riskLevel === 'critical'
+              ? 'Multiple high-urgency signals detected. Immediate attention required.'
+              : riskLevel === 'elevated'
+              ? 'Watch-level signals active. Monitor for escalation.'
+              : 'Signal posture within acceptable bounds.'}
+          </p>
+          {/* Sub-metrics row */}
+          <div className="grid grid-cols-4 gap-2">
+            {subMetrics.map(m => (
+              <div key={m.label} className="flex flex-col items-center px-1.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+                <span className={`text-xs font-bold font-mono ${m.color}`}>{m.value}</span>
+                <span className="text-[8px] text-slate-600 uppercase tracking-widest mt-0.5">{m.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
   const [stream, setStream] = useState([]);
@@ -1731,6 +1865,9 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {/* FEATURE 15: ORG RISK GAUGE */}
+            <OrgRiskGauge stream={stream} watchlist={watchlist} digest={digest} />
 
             {/* DIGEST HISTORY DROPDOWN */}
             {digestHistory.length > 1 && (
