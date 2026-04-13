@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio, Pencil, StickyNote, CornerDownLeft, SendHorizonal } from 'lucide-react';
+import { Activity, Clock, MessageSquare, Mail, LayoutDashboard, Terminal, AlertCircle, CheckCircle2, AlertTriangle, ArrowRight, Zap, Loader2, Sparkles, TrendingUp, PenSquare, RefreshCw, AlertOctagon, Info, Pause, Play, Filter, Copy, Check, X, BellRing, Pin, PinOff, ChevronDown, ChevronUp, Search, History, Maximize2, Minimize2, Download, Sun, Moon, Tag, EyeOff, Eye, BarChart2, GitCompare, Timer, Gauge, Command, Zap as ZapIcon, TrendingDown, Radio, Pencil, StickyNote, CornerDownLeft, SendHorizonal, Crosshair, ListChecks, Flame } from 'lucide-react';
 import { rawDataStream, getHeartbeatDigest } from './mockData';
 
 // ─── THEME CONTEXT ────────────────────────────────────────────────────────────
@@ -1110,6 +1110,236 @@ function OrgRiskGauge({ stream, watchlist, digest }) {
   );
 }
 
+// ─── FEATURE 16: MISSION SNAPSHOT ──────────────────────────────────────────────
+function getSuggestedAction(stream, watchlist, signalTags, signalNotes, digest) {
+  const critical = stream.filter(s => getSentiment(s.text) === 'critical');
+  const urgentUntagged = stream
+    .filter(s => getUrgencyScore(s) >= 7 && !signalTags[s.id])
+    .sort((a, b) => getUrgencyScore(b) - getUrgencyScore(a));
+  const watchHits = stream.filter(s =>
+    watchlist.some(w => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(w.toLowerCase()))
+  );
+  const hasUnannotatedCritical = critical.some(s => !signalNotes[s.id]);
+
+  if (critical.length >= 3)
+    return { icon: '🚨', text: `${critical.length} critical signals active — convene team immediately and triage top risk.`, color: 'text-rose-300' };
+  if (urgentUntagged.length >= 2)
+    return { icon: '🏷', text: `${urgentUntagged.length} high-urgency signals untagged — classify as Action/FYI/BD to prioritise response.`, color: 'text-amber-300' };
+  if (watchHits.length > 0 && !digest)
+    return { icon: '📡', text: `${watchHits.length} watchlist client(s) mentioned — generate a digest to assess impact.`, color: 'text-violet-300' };
+  if (hasUnannotatedCritical)
+    return { icon: '📝', text: 'Critical signal lacks context — add a private annotation before your next decision.', color: 'text-amber-300' };
+  if (!digest && stream.length >= 10)
+    return { icon: '✨', text: 'Enough signals accumulated — generate an Intelligence Digest for a full brief.', color: 'text-indigo-300' };
+  if (stream.length === 0)
+    return { icon: '⏳', text: 'Awaiting signals — stream will populate shortly.', color: 'text-slate-400' };
+  return { icon: '✅', text: 'Signal posture nominal. Monitor velocity for emerging patterns.', color: 'text-emerald-300' };
+}
+
+function MissionSnapshot({ open, onClose, stream, watchlist, signalTags, signalNotes, digest, sessionStart, digestCount }) {
+  const top3 = useMemo(() =>
+    [...stream].sort((a, b) => getUrgencyScore(b) - getUrgencyScore(a)).slice(0, 3)
+  , [stream]);
+
+  const criticalCount = stream.filter(s => getSentiment(s.text) === 'critical').length;
+  const watchHits     = stream.filter(s =>
+    watchlist.some(w => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(w.toLowerCase()))
+  );
+  const openActions   = stream.filter(s => getUrgencyScore(s) >= 7 && !signalTags[s.id]).length;
+
+  const riskScore = useMemo(() => {
+    if (!stream.length) return 0;
+    const critRatio  = criticalCount / stream.length;
+    const avgUrgency = stream.reduce((a, s) => a + getUrgencyScore(s), 0) / stream.length;
+    const watchHitRate = watchHits.length / Math.max(stream.length, 1);
+    return Math.min(100, Math.round(critRatio * 40 + ((avgUrgency - 1) / 9) * 30 + Math.min(watchHitRate, 1) * 20));
+  }, [stream, criticalCount, watchHits]);
+
+  const riskLevel = riskScore >= 70 ? 'critical' : riskScore >= 40 ? 'elevated' : 'nominal';
+  const ringColor = riskLevel === 'critical' ? '#f43f5e' : riskLevel === 'elevated' ? '#f59e0b' : '#10b981';
+  const SIZE = 80; const R = 32; const CC = SIZE / 2;
+  const CIRC = 2 * Math.PI * R;
+  const dashOffset = CIRC * (1 - riskScore / 100);
+
+  const suggestion = useMemo(() =>
+    getSuggestedAction(stream, watchlist, signalTags, signalNotes, digest)
+  , [stream, watchlist, signalTags, signalNotes, digest]);
+
+  const [elapsed, setElapsed] = useState('');
+  useEffect(() => {
+    if (!open) return;
+    const tick = () => {
+      const secs = Math.floor((Date.now() - sessionStart) / 1000);
+      const m = Math.floor(secs / 60).toString().padStart(2, '0');
+      const s = (secs % 60).toString().padStart(2, '0');
+      setElapsed(`${m}:${s}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [open, sessionStart]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Escape' || e.key === 'm' || e.key === 'M') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl mx-4 rounded-3xl overflow-hidden shadow-2xl shadow-black/80"
+        style={{ background: 'linear-gradient(135deg, #080b18 0%, #0d1024 50%, #0a0e1e 100%)', border: '1px solid rgba(255,255,255,0.07)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Title bar */}
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.06]">
+          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+            <Crosshair className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white tracking-wide">Mission Snapshot</p>
+            <p className="text-[10px] text-slate-500 font-mono mt-0.5">Live situational brief · Press M or Esc to close</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1.5">
+              <Clock className="w-3 h-3" /> Session {elapsed}
+            </span>
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-slate-500 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 grid grid-cols-2 gap-5">
+          {/* LEFT COL */}
+          <div className="space-y-4">
+            {/* Risk ring + stats */}
+            <div className="flex items-center gap-5 p-4 rounded-2xl bg-white/[0.025] border border-white/[0.05]">
+              <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="shrink-0">
+                <circle cx={CC} cy={CC} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                <circle cx={CC} cy={CC} r={R} fill="none" stroke={ringColor} strokeWidth="6"
+                  strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={dashOffset}
+                  transform={`rotate(-90 ${CC} ${CC})`}
+                  style={{ transition: 'stroke-dashoffset 1s ease', filter: `drop-shadow(0 0 8px ${ringColor}99)` }}
+                  className={riskLevel === 'critical' ? 'risk-ring-pulse' : ''}
+                />
+                <text x={CC} y={CC - 3} textAnchor="middle" dominantBaseline="middle"
+                  fontSize="16" fontWeight="800" fontFamily="'Inter', monospace" fill={ringColor}
+                >{riskScore}</text>
+                <text x={CC} y={CC + 9} textAnchor="middle" dominantBaseline="middle"
+                  fontSize="5.5" fontWeight="600" fontFamily="'Inter', monospace"
+                  fill="rgba(255,255,255,0.25)" letterSpacing="1"
+                >RISK</text>
+              </svg>
+              <div>
+                <p className={`text-sm font-bold mb-1 ${
+                  riskLevel === 'critical' ? 'text-rose-400' : riskLevel === 'elevated' ? 'text-amber-400' : 'text-emerald-400'
+                }`}>{riskLevel === 'critical' ? 'Critical Risk' : riskLevel === 'elevated' ? 'Elevated Risk' : 'Nominal'}</p>
+                <div className="space-y-1">
+                  {[
+                    [`${stream.length}`, 'Total signals'],
+                    [`${criticalCount}`, 'Critical'],
+                    [`${digestCount}`, 'Digests generated'],
+                    [`${watchHits.length}`, 'Watchlist hits'],
+                  ].map(([val, lbl]) => (
+                    <div key={lbl} className="flex items-center gap-2">
+                      <span className="text-xs font-bold font-mono text-white w-6 text-right">{val}</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">{lbl}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Suggested Next Action */}
+            <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.05]">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                <ListChecks className="w-3 h-3" /> Suggested Next Action
+              </p>
+              <p className={`text-sm font-medium leading-relaxed ${suggestion.color}`}>
+                {suggestion.icon} {suggestion.text}
+              </p>
+            </div>
+
+            {/* Open Actions */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">{openActions} Open Action{openActions !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] text-slate-500">High-urgency signals without a tag or reply</p>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COL — Top 3 Urgent Signals */}
+          <div className="flex flex-col gap-3">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+              <Flame className="w-3 h-3 text-rose-400" /> Top Urgent Signals
+            </p>
+            {top3.length === 0 && (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-[11px] text-slate-700 font-mono uppercase tracking-widest">Awaiting signals…</p>
+              </div>
+            )}
+            {top3.map((s, i) => {
+              const urg = getUrgencyScore(s);
+              const sent = getSentiment(s.text);
+              const borderColor = sent === 'critical' ? 'border-rose-500/25' : 'border-white/[0.05]';
+              const bgColor     = sent === 'critical' ? 'bg-rose-500/[0.04]' : 'bg-white/[0.025]';
+              return (
+                <div key={s.id} className={`p-3.5 rounded-xl border ${bgColor} ${borderColor}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold font-mono text-slate-500">#{i + 1}</span>
+                      {getSourceIcon(s.type)}
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.source}</span>
+                    </div>
+                    <UrgencyBadge score={urg} />
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed font-light line-clamp-2">{s.text}</p>
+                  <p className="text-[10px] text-slate-600 font-mono mt-1.5">{s.author} · {s.time}</p>
+                </div>
+              );
+            })}
+            {watchHits.length > 0 && (
+              <div className="mt-auto p-2.5 rounded-xl bg-violet-500/[0.05] border border-violet-500/20">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-violet-300 mb-1">👁 Watchlist Mentions ({watchHits.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {[...new Set(watchHits.flatMap(s =>
+                    watchlist.filter(w => `${s.text} ${s.author} ${s.source}`.toLowerCase().includes(w.toLowerCase()))
+                  ))].map(w => (
+                    <span key={w} className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-semibold">{w}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-white/[0.05] bg-black/20 flex items-center justify-between">
+          <span className="text-[9px] text-slate-700 font-mono uppercase tracking-widest">Livo Heartbeat · macOS Local Node</span>
+          <button
+            onClick={onClose}
+            className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
   const [stream, setStream] = useState([]);
@@ -1160,6 +1390,10 @@ function App() {
 
   // Feature 14: Quick Reply Drafts
   const [replySignal, setReplySignal] = useState(null);
+
+  // Feature 16: Mission Snapshot
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const sessionStart = useRef(Date.now());
 
   const saveNote = useCallback((id, text) => {
     setSignalNotes(prev => {
@@ -1319,8 +1553,9 @@ function App() {
       if (e.key === 'f' || e.key === 'F') { setFocusMode(f => !f); }
       if (e.key === 't' || e.key === 'T') { setTheme(th => th === 'dark' ? 'light' : 'dark'); }
       if (e.key === 'v' || e.key === 'V') { setVelocityOpen(v => !v); }
+      if (e.key === 'm' || e.key === 'M') { setSnapshotOpen(o => !o); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(p => !p); return; }
-      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); setActiveNoteId(null); }
+      if (e.key === 'Escape') { setSearchQuery(''); setShowTagMenu(null); setPaletteOpen(false); setActiveNoteId(null); setSnapshotOpen(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -1353,6 +1588,19 @@ function App() {
           />
         )}
 
+        {/* Feature 16: Mission Snapshot */}
+        <MissionSnapshot
+          open={snapshotOpen}
+          onClose={() => setSnapshotOpen(false)}
+          stream={stream}
+          watchlist={watchlist}
+          signalTags={signalTags}
+          signalNotes={signalNotes}
+          digest={digest}
+          sessionStart={sessionStart.current}
+          digestCount={digestHistory.length}
+        />
+
         <CommandPalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
@@ -1371,7 +1619,7 @@ function App() {
 
         {/* KEYBOARD SHORTCUT LEGEND */}
         <div className="fixed bottom-5 left-5 z-50 flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/80 border border-white/[0.06] backdrop-blur pointer-events-none">
-          {[['Space','Pause'],['G','Generate'],['F','Focus'],['V','Velocity'],['T','Theme'],['Ctrl+K','Palette'],['R','Reply'],['Esc','Clear']].map(([key, label]) => (
+          {[['Space','Pause'],['G','Generate'],['F','Focus'],['V','Velocity'],['T','Theme'],['M','Snapshot'],['Ctrl+K','Palette'],['R','Reply'],['Esc','Clear']].map(([key, label]) => (
             <span key={key} className="flex items-center gap-1.5">
               <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/10 text-slate-400">{key}</kbd>
               <span className="text-[9px] text-slate-600 uppercase tracking-widest">{label}</span>
